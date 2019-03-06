@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Quarkus: Supersonic Subatomic Java">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-NJWS5L');</script>
+  <!-- End Google Tag Manager -->
+
+
+</head>
+
+<body class="guides">
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NJWS5L"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <div class="content">
+    <div class="navigation-wrapper">
+  <div class="width-12-12">
+    <div class="header navigation">
+      <div class="logo-wrapper">
+        <a class="styled-logo" href="/">Quarkus</a>
+      </div>
+      <div class="nav-container">
+        <nav>
+          <div class="nav-mobile"><a id="nav-toggle" href="#!"><span></span></a></div>
+          <ul class="nav-list">
+            <li>
+              <a href="/get-started/" class="">Get Started</a>
+            </li>
+            <li>
+              <a href="/guides/" class="active">Guides</a>
+            </li>
+            <li>
+              <a href="/extensions/" class="">Extensions</a>
+            </li>
+            <li>
+              <a href="/community/" class="">Community</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <div class="grid-wrapper guides">
+  <div class="grid__item width-12-12">
+    <h1 class="text-caps">Quarkus - Contexts and Dependency Injection</h1>
+    <div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Quarkus DI solution is based on the <a href="http://docs.jboss.org/cdi/spec/2.0/cdi-spec.html" target="_blank" rel="noopener">Contexts and Dependency Injection for Java 2.0</a> specification.
+However, it is not a full CDI implementation verified by the TCK.
+Only a subset of the CDI features is implemented - see also <a href="#supported_features">the list of supported features</a> and <a href="#limitations">the list of limitations</a>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Most of the existing CDI code should work just fine but there are some small differences which follow from the Quarkus architecture and goals.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="bean_discovery">1. Bean Discovery</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Bean discovery in CDI is a complex process which involves legacy deployment structures and accessibility requirements of the underlying module architecture.
+Quarkus is using a simplified bean discovery.
+There is only one bean archive with <code>annotated</code> bean discovery mode and no visibility boundaries.</p>
+</div>
+<div class="paragraph">
+<p>The bean archive is synthesized from:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the application,</p>
+</li>
+<li>
+<p>application dependencies that contain a <code>beans.xml</code> descriptor or a generated Jandex index (<code>META-INF/jandex.idx</code>),</p>
+</li>
+<li>
+<p>and Quarkus integration code.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Bean classes that don&#8217;t have a <a href="http://docs.jboss.org/cdi/spec/2.0/cdi-spec.html#bean_defining_annotations" target="_blank" rel="noopener">bean defining annotation</a> are not discovered.
+This behavior is defined by CDI.
+But producer methods and fields and observer methods are discovered even if the declaring class is not annotated with a bean defining annotation (this behavior is different to what is defined in CDI).
+In fact, the declaring bean classes are considered annotated with <code>@Dependent</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Quarkus extension may declare additional discovery rules. For example <code>@Scheduled</code> business methods are registered even if the declaring class is not annotated with a bean defining annotation.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="private-members">2. Private Members</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Quarkus is designed with Substrate VM in mind.
+One of the limitations is the usage of <a href="https://github.com/oracle/graal/blob/master/substratevm/LIMITATIONS.md#user-content-reflection" target="_blank" rel="noopener">Reflection</a>.
+Substrate VM does support reflective calls but for a price of a bigger native image.
+Quarkus must use reflection fallback to access private members.
+That&#8217;s why Quarkus users are encouraged <em>not to use private members</em> in their beans.
+This involves injection fields, constructors and initializers, observer methods, producer methods and fields, disposers and interceptor methods.</p>
+</div>
+<div class="paragraph">
+<p>You can use for example package-private modifiers:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@ApplicationScoped
+public class CounterBean {
+
+    @Inject
+    CounterService counterService; <b class="conum">(1)</b>
+
+    void onMessage(@Observes Event msg) { <b class="conum">(2)</b>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>A package-private injection field</p>
+</li>
+<li>
+<p>A package-private observer method</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Or constructor injection:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@ApplicationScoped
+public class CounterBean {
+
+    private final CounterService service;
+
+    CounterBean() { <b class="conum">(1)</b>
+    }
+
+    @Inject
+    CounterBean(CounterService service) { <b class="conum">(2)</b>
+      this.service = service;
+    }
+}</code></pre>
+</div>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Dummy constructor needed for CDI beans with a normal scope</p>
+</li>
+<li>
+<p>A package-private constructor injection</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="supported_features">3. Supported Features</h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>Programming model</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Managed beans implemented by a Java class</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>@PostConstruct</code> and <code>@PreDestroy</code> lifecycle callbacks</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Producer methods and fields, disposers</p>
+</li>
+<li>
+<p>Qualifiers</p>
+</li>
+<li>
+<p>Alternatives</p>
+</li>
+<li>
+<p>Stereotypes</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Dependency injection and lookup</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Field, constructor and initializer/setter injection</p>
+</li>
+<li>
+<p>Type-safe resolution</p>
+</li>
+<li>
+<p>Programmatic lookup via <code>javax.enterprise.inject.Instance</code></p>
+</li>
+<li>
+<p>Client proxies</p>
+</li>
+<li>
+<p>Injection point metadata <sup class="footnote">[<a id="_footnoteref_1" class="footnote" href="#_footnotedef_1" title="View footnote.">1</a>]</sup></p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Scopes and contexts</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>@Dependent</code>, <code>@ApplicationScoped</code>, <code>@Singleton</code> and <code>@RequestScoped</code></p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Interceptors</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Business method interceptors: <code>@AroundInvoke</code></p>
+</li>
+<li>
+<p>Interceptors for lifecycle event callbacks: <code>@PostConstruct</code>, <code>@PreDestroy</code>, <code>@AroundConstruct</code></p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Events and observers, including asynchronous events</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="limitations">4. Limitations</h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p><code>@SessionScoped</code> and <code>@ConversationScoped</code> are not supported</p>
+</li>
+<li>
+<p>Custom scopes and contexts are not supported</p>
+</li>
+<li>
+<p>Decorators are not supported</p>
+</li>
+<li>
+<p>Portable Extensions are not supported</p>
+</li>
+<li>
+<p><code>BeanManager</code> - only the following methods are implemented: <code>getBeans()</code>, <code>createCreationalContext()</code>, <code>getReference()</code>, <code>resolve()</code>, <code>getContext()</code>, <code>getEvent()</code> and <code>createInstance()</code></p>
+</li>
+<li>
+<p>Specialization is not supported</p>
+</li>
+<li>
+<p><code>beans.xml</code> descriptor content is ignored</p>
+</li>
+<li>
+<p>Passivation and passivating scopes are not supported</p>
+</li>
+<li>
+<p>Transitive interceptor bindings and interceptor methods on superclasses are not implemented yet</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="build-time-extension-points">5. Build Time Extension Points</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="portable_extensions">5.1. Portable Extensions</h3>
+<div class="paragraph">
+<p>Quarkus incorporates build-time optimizations in order to provide instant startup and low memory footprint.
+The downside of this approach is that CDI Portable Extensions cannot be supported.
+Nevertheless, most of the functionality can be achieved using Quarkus <a href="extension-authors-guide.html">extensions</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="additional-bean-defining-annotations">5.2. Additional Bean Defining Annotations</h3>
+<div class="paragraph">
+<p>As described in <a href="#bean_discovery">Bean Discovery</a> bean classes that don’t have a bean defining annotation are not discovered.
+However, <code>BeanDefiningAnnotationBuildItem</code> can be used to extend the set of default bean defining annotations (<code>@Dependent</code>, <code>@Singleton</code>, <code>@ApplicationScoped</code>, <code>@RequestScoped</code> and <code>@Stereotype</code> annotations):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@BuildStep
+BeanDefiningAnnotationBuildItem additionalBeanDefiningAnnotation() {
+    return new BeanDefiningAnnotationBuildItem(DotName.createSimple("javax.ws.rs.Path")));
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Bean registrations that are result of a <code>BeanDefiningAnnotationBuildItem</code> are unremovable by default. See also <a href="#remove_unused_beans">Removing Unused Beans</a>.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="resource-annotations">5.3. Resource Annotations</h3>
+<div class="paragraph">
+<p><code>ResourceAnnotationBuildItem</code> is used to specify resource annotations  that make it possible to resolve non-CDI injection points, such as Java EE resources.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+An integrator must also provide a corresponding <code>io.quarkus.arc.ResourceReferenceProvider</code> implementation.
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@BuildStep
+void setupResourceInjection(BuildProducer&lt;ResourceAnnotationBuildItem&gt; resourceAnnotations, BuildProducer&lt;GeneratedResourceBuildItem&gt; resources) {
+    resources.produce(new GeneratedResourceBuildItem("META-INF/services/io.quarkus.arc.ResourceReferenceProvider",
+        JPAResourceReferenceProvider.class.getName().getBytes()));
+    resourceAnnotations.produce(new ResourceAnnotationBuildItem(DotName.createSimple(PersistenceContext.class.getName())));
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="additional-beans">5.4. Additional Beans</h3>
+<div class="paragraph">
+<p><code>AdditionalBeanBuildItem</code> is used to specify additional bean classes to be analyzed during discovery.
+Additional bean classes are transparently added to the application index processed by the container.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@BuildStep
+List&lt;AdditionalBeanBuildItem&gt; additionalBeans() {
+     return Arrays.asList(
+          new AdditionalBeanBuildItem(SmallRyeHealthReporter.class),
+          new AdditionalBeanBuildItem(HealthServlet.class));
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+A bean registration that is a result of an <code>AdditionalBeanBuildItem</code> is removable by default. See also <a href="#remove_unused_beans">Removing Unused Beans</a>.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="synthetic-beans">5.5. Synthetic Beans</h3>
+<div class="paragraph">
+<p>Sometimes it&#8217;s useful to register a synthetic bean, i.e. a bean that doesn&#8217;t need to have a corresponding java class.
+In CDI this could be achieved using <code>AfterBeanDiscovery.addBean()</code> methods.
+In Quarkus we produce a <code>BeanRegistrarBuildItem</code> and leverage the <code>io.quarkus.arc.processor.BeanConfigurator</code> API to build a synthetic bean definition.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+The output of a <code>BeanConfigurator</code> is recorded as bytecode. Therefore there are some limitations in how a synthetic bean instance is created. See also <code>BeanConfigurator.creator()</code> methods.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="annotation-transformations">5.6. Annotation Transformations</h3>
+<div class="paragraph">
+<p>A very common task is to override the annotations found on the bean classes.
+For example you might want to add an interceptor binding to a specific bean class.
+Here is how to do it - use the <code>AnnotationsTransformerBuildItem</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@BuildStep
+AnnotationsTransformerBuildItem transform() {
+    return new AnnotationsTransformerBuildItem(new AnnotationsTransformer() {
+
+        public boolean appliesTo(org.jboss.jandex.AnnotationTarget.Kind kind) {
+            return kind == org.jboss.jandex.AnnotationTarget.Kind.CLASS;
+        }
+
+        public void transform(TransformationContext context) {
+            if (contex.getTarget().asClass().name().toString().equals("com.foo.Bar")) {
+                context.transform().add(MyInterceptorBinding.class).done();
+            }
+        }
+    });
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="bean-deployment-validation">5.7. Bean Deployment Validation</h3>
+<div class="paragraph">
+<p>Once the bean deployment is ready an extenion can perform additional validations and inspect the found beans, observers and injection points.
+Register a <code>BeanDeploymentValidatorBuildItem</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">@BuildStep
+BeanDeploymentValidatorBuildItem beanDeploymentValidator() {
+    return new BeanDeploymentValidatorBuildItem(new BeanDeploymentValidator() {
+         public void validate(ValidationContext validationContext) {
+             for (InjectionPointInfo injectionPoint : validationContext.get(Key.INJECTION_POINTS)) {
+                 System.out.println("Injection point: " + injectionPoint);
+             }
+         }
+    });
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+See also <code>io.quarkus.arc.processor.BuildExtension.Key</code> to discover the available metadata.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="remove_unused_beans">6. Removing Unused Beans</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The container attempts to remove all unused beans during build by default.
+This optimization can be disabled: <code>quarkus.arc.remove-unused-beans=false</code>.</p>
+</div>
+<div class="paragraph">
+<p>An unused bean:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>is not a built-in bean or an interceptor,</p>
+</li>
+<li>
+<p>is not eligible for injection to any injection point,</p>
+</li>
+<li>
+<p>is not excluded by any extension,</p>
+</li>
+<li>
+<p>does not have a name,</p>
+</li>
+<li>
+<p>does not declare an observer,</p>
+</li>
+<li>
+<p>does not declare any producer which is eligible for injection to any injection point,</p>
+</li>
+<li>
+<p>is not directly eligible for injection into any <code>javax.enterprise.inject.Instance</code> injection point</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The extensions can eliminate possible false positives by producing <code>UnremovableBeanBuildItem</code>.</p>
+</div>
+</div>
+</div>
+<div id="footnotes">
+<hr>
+<div class="footnote" id="_footnotedef_1">
+<a href="#_footnoteref_1">1</a>. <code>InjectionPoint.getMember()</code> is currently not supported.
+</div>
+</div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/" class="styled-logo">Quarkus</a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Quarkus is open. All dependencies of this project are available under the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a> or compatible license.<br /><br />This website was built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/quarkusio/quarkusio.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <span>Navigation</span>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/guides">Guides</a></li>
+          
+            <li><a href="/get-started">Get Started</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <span>Contribute</span>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://twitter.com/quarkusio">Follow us</a></li>
+          
+            <li><a href="https://github.com/quarkusio">GitHub</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <span>Get Help</span>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://quarkusio.zulipchat.com">Chatroom</a></li>
+          
+        </ul>
+      </div>
+    
+
+    
+      <div class="width-6-12 more-links">
+        <span>Quarkus is made of community projects</span>
+        <ul class="footer-links">
+          
+            <li><a href="https://camel.apache.org" target="_blank">Apache Camel</a></li>
+          
+            <li><a href="https://microprofile.io" target="_blank">Eclipse Microprofile</a></li>
+          
+            <li><a href="https://vertx.io/" target="_blank">Eclipse Vert.x</a></li>
+          
+            <li><a href="http://hibernate.org" target="_blank">Hibernate</a></li>
+          
+            <li><a href="https://netty.io" target="_blank">Netty</a></li>
+          
+            <li><a href="https://resteasy.github.io" target="_blank">RESTEasy</a></li>
+          
+        </ul>
+      </div>
+    
+  </div>
+</div>
+  <div class="content redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/RHLogo_white.svg"></a>
+    </span>
+  </div>
+</div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script>
+</body>
+
+</html>

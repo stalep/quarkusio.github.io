@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Quarkus: Supersonic Subatomic Java">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-NJWS5L');</script>
+  <!-- End Google Tag Manager -->
+
+
+</head>
+
+<body class="guides">
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NJWS5L"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <div class="content">
+    <div class="navigation-wrapper">
+  <div class="width-12-12">
+    <div class="header navigation">
+      <div class="logo-wrapper">
+        <a class="styled-logo" href="/">Quarkus</a>
+      </div>
+      <div class="nav-container">
+        <nav>
+          <div class="nav-mobile"><a id="nav-toggle" href="#!"><span></span></a></div>
+          <ul class="nav-list">
+            <li>
+              <a href="/get-started/" class="">Get Started</a>
+            </li>
+            <li>
+              <a href="/guides/" class="active">Guides</a>
+            </li>
+            <li>
+              <a href="/extensions/" class="">Extensions</a>
+            </li>
+            <li>
+              <a href="/community/" class="">Community</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <div class="grid-wrapper guides">
+  <div class="grid__item width-12-12">
+    <h1 class="text-caps">Quarkus - Extension Authors Guide</h1>
+    <div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Quarkus extensions add a new developer focused behavior to the core offering, and consist of two distinct parts, buildtime augmentation and runtime container. The augmentation part is responsible for all metadata processing, such as reading annotations, XML descriptors etc. The output of this augmentation phase is recorded bytecode which is responsible for directly instantiating the relevant runtime services.</p>
+</div>
+<div class="paragraph">
+<p>This means that metadata is only processed once at build time, which both saves on startup time, and also on memory
+usage as the classes etc that are used for processing are not loaded (or even present) in the runtime JVM.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="three-phases-of-bootstrap-and-quarkus-philosophy">1. Three Phases of Bootstrap and Quarkus Philosophy</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>There are three distinct bootstrap phases of a Quarkus app:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Augmentation</dt>
+<dd>
+<p>This is the first phase, and is done by the <a href="#build-step-processors">Build Step Processors</a>. These processors have access to Jandex annotation
+information and can parse any descriptors and read annotations, but should not attempt to load any application classes. The output of these
+build steps is some recorded bytecode, using an extension of the ObjectWeb ASM project called Gizmo(ext/gizmo), that is used to actually bootstrap the application at runtime. Depending on the <code>io.quarkus.deployment.annotations.ExecutionTime</code> value of the <code>@io.quarkus.deployment.annotations.Record</code> annotation associated with the build step,
+the step may be run in a different JVM based on the following two modes.</p>
+</dd>
+<dt class="hdlist1">Static Init</dt>
+<dd>
+<p>If bytecode is recorded with <code>@Record(STATIC_INIT)</code> then it will be executed from a static init method on the main
+class. For a native image build, this code is executed in a normal JVM as part of the image build
+process, and any retained objects that are produced in this stage will be directly serialized into the native image via an image mapped file.
+This means that if a framework can boot in this phase then it will have its booted state directly written to the
+image, and so the boot code does not need to be executed when the image is started.</p>
+<div class="paragraph">
+<p>There are some restrictions on what can be done in this stage as the Substrate VM disallows some objects in the native image. For example you should not attempt to listen on a port or start threads in this phase.</p>
+</div>
+<div class="paragraph">
+<p>In non-native pure JVM mode, there is no real difference between Static and Runtime Init, except that Static Init is always executed first. This mode benefits from the same build phase augmentation as native mode as the descriptor parsing and annotation scanning are done
+at build time and any associated class/framework dependencies can be removed from the build output jar. In servers like
+WildFly, deployment related classes such as XML parsers hang around for the life of the application, using up valuable
+memory. Quarkus aims to eliminate this, so that the only classes loaded at runtime are actually used at runtime.</p>
+</div>
+<div class="paragraph">
+<p>As an example, the only reason that a Quarkus application should load an XML parser is if the user is using XML in their
+application. Any XML parsing of configuration should be done in the Augmentation phase.</p>
+</div>
+</dd>
+<dt class="hdlist1">Runtime Init</dt>
+<dd>
+<p>If bytecode is recorded with <code>@Record(RUNTIME_INIT)</code> then it is executed from the application&#8217;s main method. This code
+will be run on native image boot. In general as little code as possible should be executed in this phase, and should
+be restricted to code that needs to open ports etc.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>Pushing as much as possible into the <code>@Record(STATIC_INIT)</code> phase allows for two different optimizations:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>In both native image and pure JVM mode this allows the app to start as fast as possible since processing was done during build time. This also minimizes the classes/native code needed in the application to pure runtime related behaviors.</p>
+</li>
+<li>
+<p>Another benefit with native image mode is that Substrate can more easily eliminate features that are not used. If features are directly initialized via bytecode, Substrate can detect that a method is never called and eliminate
+that method. If config is read at runtime, Substrate cannot reason about the contents of the config and so needs to keep all features in case they are required.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="maven-setup">2. Maven setup</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Your extension project should be setup as a multi-module project with two submodules:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>A deployment time submodule that handles the build time processing and bytecode recording.</p>
+</li>
+<li>
+<p>A runtime submodule that contains the runtime behavior that will provide the extension behavior in the native image or runtime JVM.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Your runtime artifact should depend on quarkus-core-runtime, and possibly the runtime artifacts of other Quarkus
+modules if you want to use functionality provided by them. You will also need to include the <code>maven-dependency-plugin</code>
+to write out the needed runtime dependencies, if you are using the Quarkus parent pom it will automatically
+inherit the correct configuration.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;dependencies&gt;
+    &lt;dependency&gt;
+      &lt;groupId&gt;io.quarkus&lt;/groupId&gt;
+      &lt;artifactId&gt;quarkus-core-runtime&lt;/artifactId&gt;
+    &lt;/dependency&gt;
+&lt;/dependencies&gt;
+
+&lt;build&gt;
+    &lt;plugins&gt;
+        &lt;plugin&gt;
+            &lt;artifactId&gt;maven-dependency-plugin&lt;/artifactId&gt;
+        &lt;/plugin&gt;
+    &lt;/plugins&gt;
+&lt;/build&gt;</code></pre>
+</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Warning</div>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Under no circumstances can the runtime module depend on a deployment artifact. This would result
+in pulling all the deployment time code into runtime scope, which defeats the purpose of having the split.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Your deployment time module should depend on <code>quarkus-core-deployment</code>, your runtime artifact,
+and possibly the deployment artifacts of other Quarkus modules if you want to use functionality provided by them.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;dependency&gt;
+  &lt;groupId&gt;io.quarkus&lt;/groupId&gt;
+  &lt;artifactId&gt;quarkus-core-deployment&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+For historical reasons the <code>augment</code> step is still called <code>deployment</code>, this will likely remain until we do our big rename.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="build-step-processors">3. Build Step Processors</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Work is done at deployment time by producing and consuming instances of <code>org.jboss.builder.item.BuildItem</code>. This is done
+by creating a class that has method(s) annotated with <code>io.quarkus.deployment.annotations.BuildStep</code>. These classes can
+consume items by injection, and produce items by either returning them from the method or by injecting an
+instance of <code>io.quarkus.deployment.annotations.BuildProducer</code> for the produced type. These processors can also record
+bytecode invocations, which is mapped to a <code>BuildItem</code> transparently.</p>
+</div>
+<div class="paragraph">
+<p>There are two distinct types of <code>BuildItem</code>, <code>SimpleBuildItem</code> and <code>MultiBuildItem</code>. <code>SimpleBuildItem</code> will only ever
+have a single instance created, while <code>MultiBuildItem</code> can have many instances.</p>
+</div>
+<div class="paragraph">
+<p>Injection can be done either via field injection, or via method parameter injection. Injection is used to set up
+dependencies between build steps. For example if you inject a <code>List&lt;ServletBuildItem&gt;</code> your build step will not be called
+until all possible producers of <code>ServletBuildItem</code> have been called. Injected objects are only valid during a <code>@BuildStep</code>
+method invocation, once the method is complete they are no longer valid.</p>
+</div>
+<div class="paragraph">
+<p>The following items are valid for injection:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>SimpleBuildItem</code> instances (at some point we may support <code>Optional&lt;SimpleBuildItem&gt;</code>, but it is not implemented yet)</p>
+</li>
+<li>
+<p><code>List&lt;? extension MultiBuildItem&gt;</code> instances</p>
+</li>
+<li>
+<p><code>BuildProducer&lt;? extends BuildItem&gt;</code> instances</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>If a method returns a <code>BuildItem</code>, or injects a <code>BuildProducer</code> it is considered to be a producer of that item type,
+while if it injects the item or list of items it is a consumer.</p>
+</div>
+<div class="paragraph">
+<p>Note that a <code>@BuildStep</code> method will only be called if it produces something that another consumer or the final output
+requires. If there is no consumer for a particular item then it will not be produced. What is required will depend on
+the final target that is being produced, for example when running in developer mode the final output will not ask
+for Substrate-specific build items such as <code>ReflectiveClassBuildItem</code> so methods that only produce Substrate specific
+items will not be invoked.</p>
+</div>
+<div class="paragraph">
+<p>Note that private methods and fields are not allowed, as injection is resolved at compile time via an annotation processor,
+and the resulting code does not have permission to inject private fields or invoke private methods.</p>
+</div>
+<div class="paragraph">
+<p><code>BuildItem</code> instances should be immutable, as the producer/consumer model does not allow for mutation to be correctly
+ordered. This is not enforced but failure to adhere to this can result in race conditions.</p>
+</div>
+<div class="sect2">
+<h3 id="capabilities">3.1. Capabilities</h3>
+<div class="paragraph">
+<p>The <code>@BuildStep</code> annotation has a <code>providesCapabilities</code> property that can be used to provide capability information
+to other extensions about what is present in the current application. Capabilities are simply strings that are used to
+describe an extension. Capabilities should generally be named after an extensions root package, for example the transactions
+extension will provide <code>io.quarkus.transactions</code>.</p>
+</div>
+<div class="paragraph">
+<p>To check if a capability is present you can inject the <code>io.quarkus.deployment.Capabilities</code> object and call
+<code>isCapabilityPresent</code>.</p>
+</div>
+<div class="paragraph">
+<p>Capabilities should be used when checking for the presence of an extension rather than class path based checks.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="application-archives">3.2. Application Archives</h3>
+<div class="paragraph">
+<p>The <code>@BuildStep</code> annotation can also register marker files that determine which archives on the class path are considered
+to be 'Application Archives', and will therefore get indexed. This is done via the <code>applicationArchiveMarkers</code>. For
+example the ArC extension registers <code>META-INF/beans.xml</code>, which means that all archives on the class path with a <code>beans.xml</code>
+file will be indexed.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="configuration">4. Configuration</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Configuration in Quarkus is based on SmallRye Config, an implementation of the MicroProfile Config specification.
+All of the standard features of MP-Config are supported; in addition, there are several extensions which are made available
+by the SmallRye Config project as well as by Quarkus itself.</p>
+</div>
+<div class="paragraph">
+<p>The value of these properties is configured in a <code>META-INF/microprofile-config.properties</code> file that conforms to the MicroProfile config format.</p>
+</div>
+<div class="paragraph">
+<p>Configuration of Quarkus extensions is injection-based, using annotations.</p>
+</div>
+<div class="sect2">
+<h3 id="configuration-keys">4.1. Configuration Keys</h3>
+<div class="paragraph">
+<p>Leaf configuration keys are mapped to non-<code>private</code> fields via the <code>@io.quarkus.runtime.annotations.ConfigItem</code> annotation.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Though the SmallRye Config project is used for implementation, the standard <code>@ConfigProperty</code> annotation does not have the
+same semantics that are needed to support configuration within extensions.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Configuration keys are normally derived from the field names that they are tied to.  This is done by de-camel-casing the name and then
+joining the segments with hyphens (<code>-</code>).  Some examples:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>bindAddress</code> becomes <code>bind-address</code></p>
+</li>
+<li>
+<p><code>keepAliveTime</code> becomes <code>keep-alive-time</code></p>
+</li>
+<li>
+<p><code>requestDNSTimeout</code> becomes <code>request-dns-timeout</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The name can also be explicitly specified by giving a <code>name</code> attribute to the <code>@ConfigItem</code> annotation.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Though it is possible to override the configuration key name using the <code>name</code> attribute of <code>@ConfigItem</code>,
+normally this should only be done in cases where (for example) the configuration key name is the same as a Java keyword.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuration-value-types">4.2. Configuration Value types</h3>
+<div class="paragraph">
+<p>The type of the field with the <code>@ConfigItem</code> annotation determines the conversion that is applied to it.  Quarkus
+extensions may use the full range of configuration types made available by SmallRye Config, which includes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>All primitive types and primitive wrapper types</p>
+</li>
+<li>
+<p><code>String</code></p>
+</li>
+<li>
+<p>Any type which has a constructor accepting a single argument of type <code>String</code> or <code>CharSequence</code></p>
+</li>
+<li>
+<p>Any type which has a static method named <code>of</code> which accepts a single argument of type <code>String</code></p>
+</li>
+<li>
+<p>Any type which has a static method named <code>valueOf</code> or <code>parse</code> which accepts a single argument of type <code>CharSequence</code> or <code>String</code></p>
+</li>
+<li>
+<p>A <code>List</code> or <code>Optional</code> of any of the above types</p>
+</li>
+<li>
+<p><code>OptionalInt</code>, <code>OptionalLong</code>, <code>OptionalDouble</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>In addition, custom converters may be registered by build extensions using the <code>io.quarkus.deployment.builditem.ConfigurationCustomConverterBuildItem</code>
+class.</p>
+</div>
+<div class="paragraph">
+<p>Though these implicit converters use reflection, Quarkus will automatically ensure that they are loaded at the appropriate time.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuration-groups">4.3. Configuration Groups</h3>
+<div class="paragraph">
+<p>Configuration values are always collected into grouping classes which are marked with the <code>@io.quarkus.runtime.annotations.ConfigGroup</code>
+annotation.  These classes contain a field for each key within its group.  In addition, configuration groups can be nested.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuration-maps">4.4. Configuration Maps</h3>
+<div class="paragraph">
+<p>A <code>Map</code> can be used for configuration at any position where a configuration group would be allowed.  The key type of such a
+map <strong>must</strong> be <code>String</code>, and its value may be either a configuration group class or a valid leaf type.  The configuration
+key segment following the map&#8217;s key segment will be used as the key for map values.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuration-roots">4.5. Configuration Roots</h3>
+<div class="paragraph">
+<p>Configuration roots are configuration groups that appear in the root of the configuration tree.  A configuration property&#8217;s full
+name is determined by joining the string <code>quarkus.</code> with the hyphenated name of the fields that form the path from the root to the
+leaf field.  For example, if I define a configuration root group called <code>ThreadPool</code>, with a nested group in a field named <code>sizing</code>
+that in turn contains a field called <code>minSize</code>, the final configuration property will be called <code>quarkus.thread-pool.sizing.min-size</code>.</p>
+</div>
+<div class="paragraph">
+<p>A configuration root&#8217;s name can be given with the <code>name</code> property, or it can be inferred from the class name.  If the latter,
+then the configuration key will be the class name, minus any <code>Config</code> or <code>Configuration</code> suffix, broken up by camel-case,
+lowercased, and re-joined using hyphens (<code>-</code>).</p>
+</div>
+<div class="paragraph">
+<p>Note: The current implementation is still using injection site to determine the root set, so to avoid migration problems, it
+is recommended that the injection site (field or parameter) have the same name as the configuration root class until
+this change is complete.</p>
+</div>
+<div class="sect3">
+<h4 id="configuration-root-phases">4.5.1. Configuration Root Phases</h4>
+<div class="paragraph">
+<p>A configuration root dictates when its contained keys are read from configuration, and when they are available to applications.  The phases defined by <code>io.quarkus.runtime.annotations.ConfigPhase</code> are as follows:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 6.6666%;">
+<col style="width: 6.6666%;">
+<col style="width: 6.6666%;">
+<col style="width: 6.6666%;">
+<col style="width: 53.3336%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Phase name</th>
+<th class="tableblock halign-center valign-top">Read &amp; avail. at build time</th>
+<th class="tableblock halign-center valign-top">Avail. at run time</th>
+<th class="tableblock halign-center valign-top">Read during static init</th>
+<th class="tableblock halign-center valign-top">Re-read during startup (native image)</th>
+<th class="tableblock halign-left valign-top">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BUILD_TIME</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✓</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✗</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✗</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✗</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Appropriate for things which affect build.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BUILD_AND_RUN_TIME_FIXED</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✓</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✓</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✗</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✗</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Appropriate for things which affect build and must be visible for run time code.  Not read from config at run time.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RUN_TIME_STATIC</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✗</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✓</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✓</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✗</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not available at build, read on start in JVM mode, fixed in native image mode.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RUN_TIME</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✗</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✓</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✓</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">✓</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not available at build, read at start in all modes.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>For all cases other than the <code>BUILD_TIME</code> case, the configuration root class and all of the configuration groups and types contained therein must be located in, or reachable from, the extension&#8217;s run time artifact.  Configuration roots of phase <code>BUILD_TIME</code> may be located in or reachable from either of the extension&#8217;s run time or deployment artifacts.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuration-example">4.6. Configuration Example</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">import io.quarkus.runtime.annotations.ConfigItem;
+import io.quarkus.runtime.annotations.ConfigGroup;
+
+import java.io.File;
+import java.util.logging.Level;
+
+@ConfigGroup <b class="conum">(1)</b>
+public class FileConfig {
+
+    /**
+     * Enable file logging.
+     */
+    @ConfigItem(defaultValue = "true")
+    boolean enable;
+
+    /**
+     * The log format.
+     */
+    @ConfigItem(defaultValue = "%d{yyyy-MM-dd HH:mm:ss,SSS} %h %N[%i] %-5p [%c{1.}] (%t) %s%e%n")
+    String format;
+
+    /**
+     * The file log level.
+     */
+    @ConfigItem(defaultValue = "ALL")
+    Level level;
+
+    /**
+     * The file logging log level.
+     */
+    @ConfigItem(defaultValue = "quarkus.log")
+    File path;
+
+}
+
+/**
+ * Logging configuration.
+ */
+@ConfigRoot(phase = ConfigPhase.RUN_TIME) <b class="conum">(2)</b>
+public class LogConfiguration {
+
+    // ...
+
+    /**
+     * Configuration properties for the logging file handler.
+     */
+    File file;
+}
+
+public class LoggingProcessor {
+    // ...
+
+    /**
+     * Logging configuration.
+     */
+    <b class="conum">(3)</b>
+    LogConfiguration config;
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>The <code>FileConfig</code> class is annotated with <code>@ConfigGroup</code> to indicate that this is an aggregate
+configuration object containing a collection of configurable properties, rather than being a simple configuration
+key type.</p>
+</li>
+<li>
+<p>The <code>@ConfigRoot</code> annotation indicates that this object is a configuration root group, whose property names will have a parent only of <code>quarkus.</code>.  In this case the properties within the group will begin with <code>quarkus.log.*</code>.</p>
+</li>
+<li>
+<p>Here the <code>LoggingProcessor</code> injects a <code>LogConfiguration</code> instance automatically by detecting the <code>@ConfigRoot</code> annotation.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>A corresponding <code>META-INF/microprofile-config.properties</code> file for the <code>File</code> values could be:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-properties" data-lang="properties">quarkus.log.file.enable=true
+quarkus.log.file.level=DEBUG
+quarkus.log.file.path=/tmp/debug.log</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="bytecode-recording">5. Bytecode Recording</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>One of the main outputs of the build process is recorded bytecode. This bytecode actually sets up the runtime environment. For example, in order to start Undertow, the resulting application will have some bytecode that directly registers all
+Servlet instances and then starts Undertow.</p>
+</div>
+<div class="paragraph">
+<p>As writing bytecode directly is incredibly complex, this is instead done via bytecode recorders. At deployment time, invocations
+are made on proxy instances of template objects that contain the actual runtime logic, and these invocations are recorded,
+including the value of method parameters. Bytecode is then created to do these same invocations on the actual template
+object at runtime.</p>
+</div>
+<div class="paragraph">
+<p>In more detail, a processor class from the extensions deployment module gathers the configuration
+information within a <code>@BuildStep</code> method that is also annotated with a <code>@Record(STATIC_INIT)</code> or  <code>@Record(RUNTIME_INIT)</code> annotation along with injection of a <code>@Template</code> annotated class
+from the runtime module. A class annotated with <code>@Template</code> is known as a template because it
+provides a template of methods to configure a runtime service. The value of template that is
+injected into the deployment class is a proxy of the template, and any method invocations that are made will be recorded, and output as bytecode that will be run at application startup.</p>
+</div>
+<div class="paragraph">
+<p>Methods on a template can return a value, which must be proxiable (if you want to return a non-proxiable item wrap it
+in <code>io.quarkus.runtime.RuntimeValue</code>). These proxies may not be invoked directly, however they can be passed
+into other template methods. This can be any template method, including from other <code>@Record</code> methods, so a common pattern
+is to produce <code>BuildItem</code> instances that wrap the results of these template invocations.</p>
+</div>
+<div class="paragraph">
+<p>For instance, in order to make arbitrary changes to a Servlet deployment Undertow has a <code>ServletExtensionBuildItem</code>,
+which is a <code>MultiBuildItem</code> that wraps a <code>ServletExtension</code> instance. I can return a <code>ServletExtension</code> from a template
+in another module, and Undertow will consume it and pass it into the template method that starts Undertow.</p>
+</div>
+<div class="paragraph">
+<p>At runtime the bytecode will be invoked in the order it is generated. This means that build step dependencies implicitly
+control the order that generated bytecode is run. In the example above we know that the bytecode that produces a
+<code>ServletExtensionBuildItem</code> will be run before the bytecode that consumes it.</p>
+</div>
+<div class="sect2">
+<h3 id="recordercontext">5.1. RecorderContext</h3>
+<div class="paragraph">
+<p><code>io.quarkus.deployment.recording.RecorderContext</code> provides some convenience methods to enhance bytecode recording,
+this includes the ability to register creation functions for classes without no-arg constructors, to register an object
+substitution (basically a transformer from a non-serializable object to a serializable one and vice versa), and to create
+a class proxy. This interface can be directly injected as a method parameter into any <code>@Record</code> method.</p>
+</div>
+<div class="paragraph">
+<p>Calling <code>classProxy</code> with a given class name will create a <code>Class</code> that can be passed into template
+methods, and at runtime will be substituted with the class whose name was passed in to <code>classProxy</code>. This is basically a
+convenience to avoid the need to explicitly load classes in the templates.</p>
+</div>
+<div class="paragraph">
+<p>TODO: config integration</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="testing-extensions">6. Testing Extensions</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Testing of extensions should be done with the <code>io.quarkus.test.QuarkusUnitTest</code> runner. This runner allows
+for Arquillian-style tests that test specific functionalities. It is not intended for testing user applications, as this
+should be done via <code>io.quarkus.test.junit.QuarkusTest</code>. The main difference between these test runners is that
+<code>QuarkusTest</code> simply boots the application once at the start of the run, while <code>QuarkusUnitTest</code> deploys a custom
+Quarkus application for each test class.</p>
+</div>
+<div class="paragraph">
+<p>These tests should be placed in the deployment module, if additional Quarkus modules are required for testing
+their deployment modules should also be added as test scoped dependencies.</p>
+</div>
+<div class="paragraph">
+<p>Note that <code>QuarkusUnitTest</code> is in the <code>quarkus-junit5-internal</code> module.</p>
+</div>
+<div class="paragraph">
+<p>An example test class may look like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">package io.quarkus.health.test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.enterprise.inject.Instance;
+import javax.inject.Inject;
+
+import org.eclipse.microprofile.health.Health;
+import org.eclipse.microprofile.health.HealthCheck;
+import org.eclipse.microprofile.health.HealthCheckResponse;
+import io.quarkus.test.QuarkusUnitTest;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.asset.EmptyAsset;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.restassured.RestAssured;
+
+public class FailingUnitTest {
+
+
+    @RegisterExtension                                                                  <b class="conum">(1)</b>
+    static final QuarkusUnitTest config = new QuarkusUnitTest()
+            .setArchiveProducer(() -&gt;
+                    ShrinkWrap.create(JavaArchive.class)                                <b class="conum">(2)</b>
+                            .addClasses(FailingHealthCheck.class)
+                            .addAsManifestResource(EmptyAsset.INSTANCE, "beans.xml")
+            );
+    @Inject                                                                             <b class="conum">(3)</b>
+    @Health
+    Instance&lt;HealthCheck&gt; checks;
+
+    @Test
+    public void testHealthServlet() {
+        RestAssured.when().get("/health").then().statusCode(503);                       <b class="conum">(4)</b>
+    }
+
+    @Test
+    public void testHealthBeans() {
+        List&lt;HealthCheck&gt; check = new ArrayList&lt;&gt;();                                    <b class="conum">(5)</b>
+        for (HealthCheck i : checks) {
+            check.add(i);
+        }
+        assertEquals(1, check.size());
+        assertEquals(HealthCheckResponse.State.DOWN, check.get(0).call().getState());
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>This tells JUnit to use the Quarkus unit test runner</p>
+</li>
+<li>
+<p>This producer is used to build the application to be tested. It uses Shrinkwrap to create a JavaArchive to test</p>
+</li>
+<li>
+<p>It is possible to inject beans from our test deployment directly into the test case</p>
+</li>
+<li>
+<p>This method directly invokes the health check Servlet and verifies the response</p>
+</li>
+<li>
+<p>This method uses the injected health check bean to verify it is returning the expected result</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>If you want to test that an extension properly fails at build time, use the <code>setExpectedException</code> method:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">package io.quarkus.hibernate.orm;
+
+import io.quarkus.deployment.configuration.ConfigurationError;
+import io.quarkus.test.QuarkusUnitTest;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+public class PersistenceAndQuarkusConfigTest {
+
+    @RegisterExtension
+    static QuarkusUnitTest runner = new QuarkusUnitTest()
+            .setExpectedException(ConfigurationError.class)                     <b class="conum">(1)</b>
+            .setArchiveProducer(() -&gt; ShrinkWrap.create(JavaArchive.class)
+                    .addAsManifestResource("META-INF/some-persistence.xml", "persistence.xml")
+                    .addAsManifestResource("META-INF/microprofile-config.properties"));
+
+    @Test
+    public void testPersistenceAndConfigTest() {
+        // should not be called, deployment exception should happen first:
+        // it's illegal to have Hibernate configuration properties in both the
+        // microprofile-config.properties an in the persistence.xml
+        Assertions.fail();
+    }
+
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>This tells JUnit that the Quarkus deployment should fail with a specific exception</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="native-image-support">7. Native Image Support</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>There Quarkus provides a lot of build items that control aspects of the native image build. This allows for extensions
+to programmatically perform tests such as registering classes for reflection or adding static resources to the native
+image. Some of these build items are listed below:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>io.quarkus.deployment.builditem.substrate.SubstrateResourceBuildItem</code></dt>
+<dd>
+<p>Includes static resources into the native image.</p>
+</dd>
+<dt class="hdlist1"><code>io.quarkus.deployment.builditem.substrate.RuntimeReinitializedClassBuildItem</code></dt>
+<dd>
+<p>A class that will be reinitialized at runtime by Substrate. This will result in the static initializer running twice.</p>
+</dd>
+<dt class="hdlist1"><code>io.quarkus.deployment.builditem.substrate.SubstrateSystemPropertyBuildItem</code></dt>
+<dd>
+<p>A system property that will be set at native image build time.</p>
+</dd>
+<dt class="hdlist1"><code>io.quarkus.deployment.builditem.substrate.SubstrateResourceBundleBuildItem</code></dt>
+<dd>
+<p>Includes a resource bundle in the native image.</p>
+</dd>
+<dt class="hdlist1"><code>io.quarkus.deployment.builditem.substrate.ReflectiveClassBuildItem</code></dt>
+<dd>
+<p>Registers a class for reflection in Substrate. Constructors are always registered, while methods and fields are optional.</p>
+</dd>
+<dt class="hdlist1"><code>io.quarkus.deployment.builditem.substrate.RuntimeInitializedClassBuildItem</code></dt>
+<dd>
+<p>A class that will be initialized at runtime rather than build time. This will cause the build to fail if the class is initialized as part of the native image build process, so care must be taken.</p>
+</dd>
+<dt class="hdlist1"><code>io.quarkus.deployment.builditem.substrate.SubstrateConfigBuildItem</code></dt>
+<dd>
+<p>A convenience feature that allows you to control most of the above features from a single build item.</p>
+</dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="ide-support-tips">8. IDE support tips</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="writing-quarkus-extensions-in-eclipse">8.1. Writing Quarkus extensions in Eclipse</h3>
+<div class="paragraph">
+<p>The only particular aspect of writing Quarkus extensions in Eclipse is that APT (Annotation Processing Tool) is required as part of extension builds, which means you need to:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Install <code>m2e-apt</code> from <a href="https://marketplace.eclipse.org/content/m2e-apt" class="bare">https://marketplace.eclipse.org/content/m2e-apt</a></p>
+</li>
+<li>
+<p>Define this property in your <code>pom.xml</code>: <code>&lt;m2e.apt.activation&gt;jdt_apt&lt;/m2e.apt.activation&gt;</code>, although if you rely on <code>io.quarkus:quarkus-build-parent</code> you will get it for free.</p>
+</li>
+<li>
+<p>If you have the <code>io.quarkus:quarkus-extension-processor</code> open at the same time in your IDE (for example, if you have the Quarkus sources checked out and open in your IDE) you will need to close that project. Otherwise, Eclipse will not invoke the APT plugin that it contains.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="troubleshooting-debugging-tips">9. Troubleshooting / Debugging Tips</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="saving-application-generated-classes-to-disk">9.1. Saving Application Generated Classes to Disk</h3>
+<div class="paragraph">
+<p>The class augmentation step of Quarkus generates classes for various purposes. Sometimes you need to view these
+classes/bytecode to debug or understand an issue. Classes that are related to application augmentation are currently held in
+memory in a runtime class loader. To have these classes written out to disk for inspection, specify the
+<code>io.quarkus.DEBUG_GENERATED_CLASSES_DIR</code> system property, for example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>mvn clean install -Dio.quarkus.DEBUG_GENERATED_CLASSES_DIR=./target/app-generated-classes</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/" class="styled-logo">Quarkus</a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Quarkus is open. All dependencies of this project are available under the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a> or compatible license.<br /><br />This website was built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/quarkusio/quarkusio.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <span>Navigation</span>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/guides">Guides</a></li>
+          
+            <li><a href="/get-started">Get Started</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <span>Contribute</span>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://twitter.com/quarkusio">Follow us</a></li>
+          
+            <li><a href="https://github.com/quarkusio">GitHub</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <span>Get Help</span>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://quarkusio.zulipchat.com">Chatroom</a></li>
+          
+        </ul>
+      </div>
+    
+
+    
+      <div class="width-6-12 more-links">
+        <span>Quarkus is made of community projects</span>
+        <ul class="footer-links">
+          
+            <li><a href="https://camel.apache.org" target="_blank">Apache Camel</a></li>
+          
+            <li><a href="https://microprofile.io" target="_blank">Eclipse Microprofile</a></li>
+          
+            <li><a href="https://vertx.io/" target="_blank">Eclipse Vert.x</a></li>
+          
+            <li><a href="http://hibernate.org" target="_blank">Hibernate</a></li>
+          
+            <li><a href="https://netty.io" target="_blank">Netty</a></li>
+          
+            <li><a href="https://resteasy.github.io" target="_blank">RESTEasy</a></li>
+          
+        </ul>
+      </div>
+    
+  </div>
+</div>
+  <div class="content redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/RHLogo_white.svg"></a>
+    </span>
+  </div>
+</div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script>
+</body>
+
+</html>
