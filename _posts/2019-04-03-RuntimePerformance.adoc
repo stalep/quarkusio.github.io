@@ -2,29 +2,29 @@
 layout: post
 date:   2019-04-24 00:00 +0100
 author: johara
-synopsis: QuarkusIO has so far been focused on start-up time and memory footprint, but runtime performance is important as well. Find out how well QuarkusIO performs in both Native and JVM modes.
+synopsis: Quarkus has so far been focused on start-up time and memory footprint, but runtime performance is important as well. Find out how well Quarkus performs in both Native and JVM modes.
 ---
 
 = Quarkus Under Pressure
 :imagesdir: /assets/images/posts/performance
 
-This the first part of a blog series that delves deeper into QuarkusIO performance.  There are many aspects to the performance of a framework from bootstrap time to memory usage, compile time and runtime performance.
+This the first part of a blog series that delves deeper into Quarkus performance.  There are many aspects to the performance of a framework from bootstrap time to memory usage, compile time and runtime performance.
 
-The definition of _"performance"_ is contextual and these series of blog posts aims to investigate the performance of QuarkusIO in varying contexts. 
+The definition of _"performance"_ is contextual and these series of blog posts aims to investigate the performance of Quarkus in varying contexts. 
 
-This article will focus on **runtime performance** of applications built with QuarkusIO.
+This article will focus on **runtime performance** of applications built with Quarkus.
 
 == tl;dr - Summary
 
-A REST application that retrieves data from a postgres database using transactions was created to compare the throughput and response latencies of QuarkusIO and Thorntail.  The application was put under varying degrees of load, to demonstrate how QuarkusIO scales.
+A REST application that retrieves data from a postgres database using transactions was created to compare the throughput and response latencies of Quarkus and Thorntail.  The application was put under varying degrees of load, to demonstrate how Quarkus scales.
 
-QuarkusIO running in native mode has shown to provide up to an 4% increase in maximum throughput whilst reducing maximum response time latencies by up to 90.3% compared to Thorntail for a single process.
+Quarkus running in native mode has shown to provide up to an 4% increase in maximum throughput whilst reducing maximum response time latencies by up to 90.3% compared to Thorntail for a single process.
 
-QuarkusIO running in JVM mode has shown to provide up to an 168% increase in maximum throughput whilst reducing maximum response time latencies by up to 86.3% compared to Thorntail for a single process.
+Quarkus running in JVM mode has shown to provide up to an 168% increase in maximum throughput whilst reducing maximum response time latencies by up to 86.3% compared to Thorntail for a single process.
 
-QuarkusIO running on the JVM provides improved throughput and response time latency compared to Native mode, but comes at the cost of increased <<Application Start Time>> and <<Maximum Memory Usage>>.
+Quarkus running on the JVM provides improved throughput and response time latency compared to Native mode, but comes at the cost of increased <<Application Start Time>> and <<Maximum Memory Usage>>.
 
-For applications running in containers, it is theoretically possible to improve application throughput by up to *471%* for the same amount of memory by running multiple instances of a QuarkusIO application in JVM mode, or *421%* running QuarkusIO in Native mode, compared to a Thorntail application.
+For applications running in containers, it is theoretically possible to improve application throughput by up to *471%* for the same amount of memory by running multiple instances of a Quarkus application in JVM mode, or *421%* running Quarkus in Native mode, compared to a Thorntail application.
 
 Native images are **not just** for short running processes. The tests ran for up to 3 hours, without process restarts, and the native image served nearly *52 MILLION* requests!
 
@@ -34,7 +34,7 @@ Native images are **not just** for short running processes. The tests ran for up
 
 *"It's all well and good optimizing for bootstrap start-up times and image size, but response time is still important"*. 
 
-Let us first address the elephant in the room, QuarkusIO has so far been focused on start-up time and Memory Footprint. 
+Let us first address the elephant in the room, Quarkus has so far been focused on start-up time and Memory Footprint. 
 
 *"That's because native performance sucks right?!"* _Wrong!_
 
@@ -45,28 +45,28 @@ By running a sample application, retrieving data from a Postgresql database via 
 
 Details of the application and test methodology can be found at the end of this post in the <<Test Application>> section.
 
-== What does QuarkusIO give you?
+== What does Quarkus give you?
 
-QuarkusIO provides you with a choice of 2 run modes.  You can either run as a native binary *or* as bytecode on a JVM.
+Quarkus provides you with a choice of 2 run modes.  You can either run as a native binary *or* as bytecode on a JVM.
 
 That means you can choose the runtime that meets *your* needs for *your* application. If a native image doesn't give you what you need, no problem, choose your favourite JVM.
 
-But don't think that running on the JVM is a second rate citizen, QuarkusIO is optimized for running on the JVM as well as in native mode
+But don't think that running on the JVM is a second rate citizen, Quarkus is optimized for running on the JVM as well as in native mode
 
 == Throughput (Req/Sec)
 
 Maximum throughput, measured in requests per second (Req/Sec) tells us the maximum number of request the single process application can service per second.  The higher the maximum throughput, the better.
 
-Comparing a native QuarkusIO application to Thorntail running on a JVM, the maximum throughput is consistent as the number of concurrent users increases.  
+Comparing a native Quarkus application to Thorntail running on a JVM, the maximum throughput is consistent as the number of concurrent users increases.  
 
 [IMPORTANT]
 ====
-**QuarkusIO 0.13.3, running in Native mode with 40 concurrent connections, provides a 4% increase in maximum throughput compared to Thorntail 2.4.0.Final running on the JVM**.
+**Quarkus 0.13.3, running in Native mode with 40 concurrent connections, provides a 4% increase in maximum throughput compared to Thorntail 2.4.0.Final running on the JVM**.
 ====
 
 [IMPORTANT]
 ====
-**QuarkusIO 0.13.3, running in JVM mode with 40 concurrent connections, out-performs Thorntail 2.4.0.Final by 168%**.
+**Quarkus 0.13.3, running in JVM mode with 40 concurrent connections, out-performs Thorntail 2.4.0.Final by 168%**.
 ====
 {sp}  
 
@@ -77,7 +77,7 @@ image::throughput.png[Throughput as a function of concurrent users]
 .Maximum Throughput (Req/Sec) 
 [width="100%",frame="topbot",options="header"]
 |=====================
-|Concurrent Connections | Thorntail | QuarkusIO - Native | QuarkusIO - JVM
+|Concurrent Connections | Thorntail | Quarkus - Native | Quarkus - JVM
 |1|3,965|4,876|11,098
 |5|17,005|21,269|48,029
 |10|23,663|35,255|78,081
@@ -97,18 +97,18 @@ Response time Latency is a measure of the time it takes for the application to r
 
 Why is this important?  **Maximum response latency tells us the worst case scenario, and between 26-93% of page loads will experience the 99th centile response time.  Having a super low, super stable maximum response latency increases application responsiveness.**
 
-Under high numbers of concurrent users; Mean response time latency for QuarkusIO in native mode is 1.91ms vs 2.49ms for Thorntail. However, QuarkusIO running in JVM mode has a mean response time latency of 0.58ms.
+Under high numbers of concurrent users; Mean response time latency for Quarkus in native mode is 1.91ms vs 2.49ms for Thorntail. However, Quarkus running in JVM mode has a mean response time latency of 0.58ms.
 
-If we look at the Maximum response time latency; Thorntail took 266ms to service at least one request, compared to 25.6ms for QuarkusIO JVM and 38.68ms for QuarkusIO Native.  
-
-[IMPORTANT]
-====
-The maximum response latency for QuarkusIO in native mode is super-stable and up to 90.4% lower than Thorntail.
-====
+If we look at the Maximum response time latency; Thorntail took 266ms to service at least one request, compared to 25.6ms for Quarkus JVM and 38.68ms for Quarkus Native.  
 
 [IMPORTANT]
 ====
-The lower mean response time latencies running on the JVM are due to the GC implementations available in the JVM are superior to the GC implementation currently available in GraalVM. QuarkusIO is currently still a Beta release, and improvements are planned for running in native mode
+The maximum response latency for Quarkus in native mode is super-stable and up to 90.4% lower than Thorntail.
+====
+
+[IMPORTANT]
+====
+The lower mean response time latencies running on the JVM are due to the GC implementations available in the JVM are superior to the GC implementation currently available in GraalVM. Quarkus is currently still a Beta release, and improvements are planned for running in native mode
 ====
 {sp}  
 
@@ -123,7 +123,7 @@ image::maxLatency.png[Mean latency as a function of concurrent users]
 .Response Latency (ms)
 [width="100%",frame="topbot",options="header"]
 |=====================
-|Concurrent Connections | Thorntail (mean) | Thorntail (max) | QuarkusIO - Native (mean) | QuarkusIO - Native (max) |QuarkusIO - JVM (mean) | QuarkusIO - JVM (max)
+|Concurrent Connections | Thorntail (mean) | Thorntail (max) | Quarkus - Native (mean) | Quarkus - Native (max) |Quarkus - JVM (mean) | Quarkus - JVM (max)
 |1|0.275|10.06|0.265|11.97|0.0967|5.54
 |5|0.521|15.04|0.653|18.6|0.185|14.82
 |10|1.4|186.06|1.03|16.33|0.263|36.66
@@ -141,7 +141,7 @@ start-up times and memory usage were measured for each runtime using the method 
 
 [width="50%",frame="topbot",options="header"]
 |=====================
-|Metric | Thorntail | QuarkusIO - Native | QuarkusIO - JVM 
+|Metric | Thorntail | Quarkus - Native | Quarkus - JVM 
 |Start Time |8764 ms|18 ms|1629 ms
 |=====================
 
@@ -157,14 +157,14 @@ The maximum memory usage during the runs was captured.
 
 [width="50%",frame="topbot",options="header"]
 |=====================
-|Thorntail | QuarkusIO - Native | QuarkusIO - JVM 
+|Thorntail | Quarkus - Native | Quarkus - JVM 
 |651 MB|130 MB|326 MB
 |=====================
 {sp}  
 
 [IMPORTANT]
 ====
-Compared to Thorntail, QuarkusIO in native mode used only *20.0%* of memory and QuarkusIO in JVM mode used *50.1%*.
+Compared to Thorntail, Quarkus in native mode used only *20.0%* of memory and Quarkus in JVM mode used *50.1%*.
 ====
 
 Therefore, **using the same amount of memory (651 MB of RAM)**, running more than one process (not constrained by CPU), it should be possible to achieve the following increases in throughput over Thorntail;
@@ -180,17 +180,17 @@ Therefore, **using the same amount of memory (651 MB of RAM)**, running more tha
 
 [IMPORTANT]
 ====
-For applications running in cloud environments, it is theoretically possible to improve application throughput by up to *421%* for the same amount of memory by running multiple instances of a QuarkusIO application in native mode.
+For applications running in cloud environments, it is theoretically possible to improve application throughput by up to *421%* for the same amount of memory by running multiple instances of a Quarkus application in native mode.
 ====
 
-== QuarkusIO native - Long running processes
+== Quarkus native - Long running processes
 
-Another concern is that QuarkusIO running in native mode is not suitable for long running processes.
+Another concern is that Quarkus running in native mode is not suitable for long running processes.
 
 
 [IMPORTANT]
 ====
-During testing, QuarkusIO was running in native mode for more than 3hrs at a time, and serviced over *51,890,000* requests!
+During testing, Quarkus was running in native mode for more than 3hrs at a time, and serviced over *51,890,000* requests!
 ====
 
 These requests caused hundreds of Full GC cycles, and the process remained stable throughout. 
@@ -210,13 +210,13 @@ Sources are available here: https://github.com/johnaohara/quarkusRestCrudDemo
 
 ==== Build;
 
-QuarkusIO JVM
+Quarkus JVM
 ```
  $ cd ./quarkus
  $ build-quarkus-jvm.sh
 ```
 
-or QuarkusIO Native
+or Quarkus Native
 
 ```
  $ cd ./quarkus
@@ -244,7 +244,7 @@ then start the application running in a docker container;
  $ cd ./quarkus
  $ ./run-quarkus-jvm.sh
 ```
-or QuarkusIO Native
+or Quarkus Native
 ```
  $ run-quarkus-native.sh
 ```
