@@ -1,0 +1,250 @@
+---
+layout: post
+date:   2019-05-23 00:00 +0100
+author: johara
+synopsis: Debugging native binaries built on Linux with Quarkus requires differnt tools that debugging code running on the JVM.  In this post I cover how to build a native binary that you can debug with native debuggers
+---
+
+= Debugging native binaries built on Linux with Quarkus
+
+== Introduction
+
+Quarkus strives to acheive parity between ruuning your hotspot on a JVM in jvm mode or GraalVM in native mode. If you find something works on the JVM, but does not in a native binary, that is a bug.  Any bugs you find, please report at https://github.com/quarkusio/quarkus/issues.
+
+Debugging your application should be no harder than descrived in the <</../guides/maven-tooling#debugging,Maven Guide>> or <</../guides/gradle-tooling#debugging,Gradle Guide>>
+
+However, there are times when you need to understand what is actually occurring in your native image, or your just curious as to what is happening under the hood.
+
+This guide describes how to build a native image with debug symbols, how to attach a debugger (GDB) and how to set breakpoints. 
+
+This guide does not provide a full tutorial of how to debug with GDB.
+
+[NOTE]
+====
+Because native binaries are platform specific, this guide covers how to debug a native image on Linux.
+====
+
+== Prerequisites
+
+ - Quarkus 0.16.0 (or later)
+
+ - GraalVM Enterprise Edition (EE) 1.0.0-rc16
+
+ - GDB 
+
+ - A working Quarkus application. Please see <</../guides/building-native-image-guide,Building Native Image Guide>> or https://github.com/quarkusio/quarkus-quickstarts
+
+[NOTE]
+====
+Debug symbols are only supported in the Enterprise Edition (EE) of GraalVM. The Comunity Edition (CE) will not generate the neccesary debug symbols
+====
+
+== Build a debuggable native image
+
+I will use the https://github.com/quarkusio/quarkus-quickstarts/tree/master/getting-started[getting start quickstart] available from https://github.com/quarkusio/quarkus-quickstarts
+
+=== 1) Set GRAALVM_HOME to GraalVM EE directory
+
+```sh
+$export GRAALVM_HOME=path_to_graalvm_ee
+```
+
+=== 2) Build native binary with debug symbols
+
+We need to configure the build tools to pass the correct parameters to the native image generator.
+
+Please follow either the Maven build steps or Gradle build steps depending on your preferred build tool.
+
+=== Maven 
+
+Edit the `pom.xml`, add the following to the `quarkus-maven-plugin` configuration;
+
+[source, xml]
+```
+<plugin>
+    <groupId>io.quarkus</groupId>
+    <artifactId>quarkus-maven-plugin</artifactId>
+    ...
+            <configuration>
+                ...
+                <additionalBuildArgs>
+                    <additionalBuildArg>-g</additionalBuildArg>
+                </additionalBuildArgs>
+                ...
+            </configuration>
+    ...
+</plugin>
+
+```
+
+Build the native images with debug symbols enabled
+
+```sh
+$mvn clean package -P native
+```
+
+[NOTE]
+====
+If you are trying to build a native image with debug symbols with GraalVM Community Edition (CE) the build will fail with:  `Error: Unrecognized option: -g`
+====
+
+Change to the target directory;
+
+```sh
+$cd target
+```
+
+There should now be two binary images created;
+
+```sh
+$ls *-runner*
+./getting-started-1.0-SNAPSHOT-runner ./getting-started-1.0-SNAPSHOT-runner.debug
+```
+
+You are now ready to <<debug-with-gdb>>
+
+=== Gradle
+
+edit `build.gradle`, and add the following to the end of the build script;
+
+[source, clojure]
+```
+buildNative.configure {
+    additionalBuildArgs = ["-g"]
+}
+```
+
+Build the native images with debug symbols enabled
+
+```sh
+$gradlew clean build buildNative --docker-build=false
+```
+
+[NOTE]
+====
+If you are trying to build a native image with debug symbols with GraalVM Community Edition (CE) the build will fail with:  `Error: Unrecognized option: -g`
+====
+
+Change to the build directory;
+
+```sh
+$cd build
+```
+
+There should now be two binary images created;
+
+```sh
+$ ls  ./*runner*
+./getting-started-runner  ./getting-started-runner.debug
+```
+
+
+== [#debug-with-gdb]#Debug with GDB#
+
+=== 1) Start applicatipon with gdb
+
+Start GDB session
+
+```sh
+$gdb ./getting-started-1.0-SNAPSHOT-runner
+```
+or
+```sh
+$gdb ./getting-started-runner
+```
+
+== Setting breakpoints
+
+Before we start our application running, we are going to set a breakpoint using the fully qualified name for our Java method
+
+```sh
+(gdb) break org.acme.quickstart.GreetingResource.greeting
+Breakpoint 1 at 0x470174 (3 locations)
+```
+
+Now we can start our process running
+
+```sh
+(gdb) run
+[New Thread 0x7ffff6aff700 (LWP 4581)]
+[New Thread 0x7ffff56f1700 (LWP 4582)]
+[New Thread 0x7ffff4ef0700 (LWP 4583)]
+[New Thread 0x7fffe7fff700 (LWP 4584)]
+[New Thread 0x7fffe77fe700 (LWP 4585)]
+[New Thread 0x7fffe6ffd700 (LWP 4586)]
+[New Thread 0x7fffe65ff700 (LWP 4587)]
+[New Thread 0x7fffe5bff700 (LWP 4588)]
+[New Thread 0x7fffe51ff700 (LWP 4589)]
+[New Thread 0x7fffcffff700 (LWP 4590)]
+2019-04-30 12:38:43,604 INFO  [io.quarkus] (main) Quarkus 0.14.0 started in 0.022s. Listening on: http://[::]:8080
+2019-04-30 12:38:43,605 INFO  [io.quarkus] (main) Installed features: [cdi, resteasy]
+```
+
+The application is now running and ready to accept requests.  It will break in executing if we make a call to `org.acme.quickstart.GreetingResource.greeting`
+
+== Observe Stack Trace
+
+Open another terminal, and invoke out rest endpoint
+
+```sh
+$curl localhost:8080/hello/greeting/john
+```
+
+In the terminal running our application, the process will hit the breakpoint we set
+
+```sh
+[New Thread 0x7fffcf7fe700 (LWP 4766)]
+[Switching to Thread 0x7fffcf7fe700 (LWP 4766)]
+
+Thread 12 "ecutor-thread-1" hit Breakpoint 1, 0x0000000000470174 in org.acme.quickstart.GreetingResource.greeting ()
+    at /tmp/quarkus/quarkus-quickstarts/getting-started/target/sources/com/oracle/svm/graal/AMD64ArrayIndexOfForeignCalls.java:101
+101	/tmp/quarkus/quarkus-quickstarts/getting-started/target/sources/com/oracle/svm/graal/AMD64ArrayIndexOfForeignCalls.java: No such file or directory.
+
+```
+
+We can now inspect the frame, generate a stace trace and inspect variables
+
+```sh
+(gdb) bt
+#0  0x0000000000470174 in org.acme.quickstart.GreetingResource.greeting () at /tmp/quarkus/quarkus-quickstarts/getting-started/target/sources/com/oracle/svm/graal/AMD64ArrayIndexOfForeignCalls.java:101
+#1  0x0000000000470174 in com.oracle.svm.reflect.GreetingResource_greeting_9651677f1cbe66c5532b8a3a4f6d6e47f2a6a846.invoke(java.lang.Object *, java.lang.Object *, java.lang.Object *) (AParam0=0xeb9dc0, 
+    AParam1=0x7fffe4208130, AParam2=0x7fffe4208678)
+#2  0x00000000006ffee2 in java.lang.reflect.Method.invoke(java.lang.Object *, java.lang.Object *, java.lang.Object *) (AParam0=<optimized out>, AParam1=<optimized out>, AParam2=<optimized out>)
+    at /tmp/quarkus/quarkus-quickstarts/getting-started/target/sources/java/lang/reflect/Method.java:498
+#3  0x0000000000a43795 in org.jboss.resteasy.core.MethodInjectorImpl.invoke(org.jboss.resteasy.core.MethodInjectorImpl *, org.jboss.resteasy.spi.HttpRequest *, org.jboss.resteasy.spi.HttpResponse *, java.lang.Object *, java.lang.Object[] *) (this=0x1862650, request=0x7fffe4205140, httpResponse=<optimized out>, resource=0x7fffe4208130, args=0x7fffe4208678)
+    at /tmp/quarkus/quarkus-quickstarts/getting-started/target/sources/org/jboss/resteasy/core/MethodInjectorImpl.java:151
+...
+#74 0x00007ffff7626594 in start_thread () from /lib64/libpthread.so.0
+#75 0x00007ffff6d01f4f in clone () from /lib64/libc.so.6
+
+(gdb) info  frame
+Stack level 0, frame at 0x7fffcf7fcf50:
+ rip = 0x470174 in org.acme.quickstart.GreetingResource.greeting (/tmp/quarkus/quarkus-quickstarts/getting-started/target/sources/com/oracle/svm/graal/AMD64ArrayIndexOfForeignCalls.java:101); 
+    saved rip = 0x6ffee2
+ inlined into frame 1
+ source language unknown.
+ Arglist at unknown address.
+ Locals at unknown address, Previous frames sp in rsp
+ (gdb) up 
+#1  0x0000000000470174 in com.oracle.svm.reflect.GreetingResource_greeting_9651677f1cbe66c5532b8a3a4f6d6e47f2a6a846.invoke(java.lang.Object *, java.lang.Object *, java.lang.Object *) (AParam0=0xeb9dc0, 
+    AParam1=0x7fffe4208130, AParam2=0x7fffe4208678)
+(gdb) info  frame
+Stack level 1, frame at 0x7fffcf7fcf50:
+ rip = 0x470174 in com.oracle.svm.reflect.GreetingResource_greeting_9651677f1cbe66c5532b8a3a4f6d6e47f2a6a846.invoke(java.lang.Object *, java.lang.Object *, java.lang.Object *); saved rip = 0x6ffee2
+ called by frame at 0x7fffcf7fcf90, caller of frame at 0x7fffcf7fcf50
+ Arglist at 0x7fffcf7fcf08, args: AParam0=0xeb9dc0, AParam1=0x7fffe4208130, AParam2=0x7fffe4208678
+ Locals at 0x7fffcf7fcf08, Previous frames sp is 0x7fffcf7fcf50
+ Saved registers:
+  rip at 0x7fffcf7fcf48
+```
+
+[NOTE]
+====
+The frame that we set a breakpoint on `org.acme.quickstart.GreetingResource.greeting` has been inlined into the frame above it, therefore Arglist, Locals etc are not available for this particular frame.
+====
+
+== Summary
+
+I have shown you how to create a native image with debug symbols, how to start the process with a debugger attached and how to set breakpoints and inspect the running process with GDB.
+
+This has created a native image that is now possible to debug or profile, with frame stack traces that map directly back to the Java source code.
