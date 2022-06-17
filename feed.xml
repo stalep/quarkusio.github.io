@@ -1,13 +1,201 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="https://quarkusio.github.io//feed.xml" rel="self" type="application/atom+xml" /><link href="https://quarkusio.github.io//" rel="alternate" type="text/html" /><updated>2019-03-06T09:01:43+00:00</updated><id>https://quarkusio.github.io//</id><title type="html">Quarkus</title><subtitle>Quarkus: Supersonic Subatomic Java</subtitle><entry><title type="html">Welcome to Jekyll!</title><link href="https://quarkusio.github.io//jekyll/update/2018/10/03/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2018-10-03T16:19:59+00:00</published><updated>2018-10-03T16:19:59+00:00</updated><id>https://quarkusio.github.io//jekyll/update/2018/10/03/welcome-to-jekyll</id><content type="html" xml:base="https://quarkusio.github.io//jekyll/update/2018/10/03/welcome-to-jekyll.html">&lt;p&gt;You’ll find this post in your &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
 
-&lt;p&gt;To add new posts, simply add a file in the &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory that follows the convention &lt;code class=&quot;highlighter-rouge&quot;&gt;YYYY-MM-DD-name-of-post.ext&lt;/code&gt; and includes the necessary front matter. Take a look at the source for this post to get an idea about how it works.&lt;/p&gt;
-
-&lt;p&gt;Jekyll also offers powerful support for code snippets:&lt;/p&gt;
-
-&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-ruby&quot; data-lang=&quot;ruby&quot;&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;print_hi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-  &lt;span class=&quot;nb&quot;&gt;puts&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;Hi, &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;#{&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;print_hi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'Tom'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;c1&quot;&gt;#=&amp;gt; prints 'Hi, Tom' to STDOUT.&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
-
-&lt;p&gt;Check out the &lt;a href=&quot;https://jekyllrb.com/docs/home&quot;&gt;Jekyll docs&lt;/a&gt; for more info on how to get the most out of Jekyll. File all bugs/feature requests at &lt;a href=&quot;https://github.com/jekyll/jekyll&quot;&gt;Jekyll’s GitHub repo&lt;/a&gt;. If you have questions, you can ask them on &lt;a href=&quot;https://talk.jekyllrb.com/&quot;&gt;Jekyll Talk&lt;/a&gt;.&lt;/p&gt;</content><author><name></name></author><summary type="html">You’ll find this post in your _posts directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run jekyll serve, which launches a web server and auto-regenerates your site when a file is updated.</summary></entry></feed>
+    <channel>
+        <title>Quarkus</title>
+        <link>https://quarkus.io</link>
+        <description>Quarkus: Supersonic Subatomic Java</description>
+        <lastBuildDate>Fri, 17 Jun 2022 11:25:36 +0000</lastBuildDate>
+        
+        <item>
+            <title>Quarkus Newsletter #21 - June</title>
+            <link>
+                https://quarkus.io/blog/quarkus-newsletter-21/
+            </link>
+            <description>
+                The June newsletter has some great new Quarkus articles. Learn how Banco do Brazil used Quarkus to create a new system to integrate with other financial institutions that participate in the Brazilian Open Banking environment. Get technical on how to configure Podman for Quarkus Dev Services and Testcontainers on Linux...
+            </description>
+            <pubDate>Mon, 13 Jun 2022 00:00:00 +0000</pubDate>
+            <guid>
+                https://quarkus.io/blog/quarkus-newsletter-21/
+            </guid>
+            
+            
+            
+            <author>James Cobb (https://twitter.com/insectengine)</author>
+            
+        </item>
+        
+        <item>
+            <title>Banco do Brasil extracts Open Banking investment data with Quarkus and Kafka</title>
+            <link>
+                https://quarkus.io/blog/banco-do-brasil-open-banking-user-story/
+            </link>
+            <description>
+                Banco do Brasil S.A. is a Brazilian financial services company headquartered in Brasília, Brazil. The oldest bank in Brazil, and among the oldest banks in continuous operation in the world, it was founded by John VI, King of Portugal, in 1808. It is the second largest banking institution in Brazil,...
+            </description>
+            <pubDate>Tue, 31 May 2022 00:00:00 +0000</pubDate>
+            <guid>
+                https://quarkus.io/blog/banco-do-brasil-open-banking-user-story/
+            </guid>
+            
+            
+            
+            <author>Felipe Henrique Gross Windmoller (https://twitter.com/felipewind83)</author>
+            
+        </item>
+        
+        <item>
+            <title>Quarkus 2.9.2.Final released - Maintenance release</title>
+            <link>
+                https://quarkus.io/blog/quarkus-2-9-2-final-released/
+            </link>
+            <description>
+                Today, we released Quarkus 2.9.2.Final, our second maintenance release for 2.9. It comes with a bunch of fixes and documentation improvements. It is a safe upgrade for anyone already using 2.9 and is highly recommended. If you are not using 2.9 already, please refer to the 2.9 migration guide. Full...
+            </description>
+            <pubDate>Wed, 25 May 2022 00:00:00 +0000</pubDate>
+            <guid>
+                https://quarkus.io/blog/quarkus-2-9-2-final-released/
+            </guid>
+            
+            
+            
+            <author>Guillaume Smet (https://twitter.com/gsmet_)</author>
+            
+        </item>
+        
+        <item>
+            <title>Quarkus Tools for IntelliJ 1.11.0 released!</title>
+            <link>
+                https://quarkus.io/blog/intellij-quarkus-tools-1.11.0/
+            </link>
+            <description>
+                We are very pleased to announce the 1.11.0 release of Quarkus Tools for IntelliJ. This release adds support for Qute templates but also align with LSP4MP 0.4.0 and quarkus-ls 0.11.1. Qute templates When a Quarkus project has Qute in the classpath, editing a Qute template (HTML / JSON / YAML...
+            </description>
+            <pubDate>Mon, 23 May 2022 00:00:00 +0000</pubDate>
+            <guid>
+                https://quarkus.io/blog/intellij-quarkus-tools-1.11.0/
+            </guid>
+            
+            
+            
+            <author>Jeff Maury (https://twitter.com/jeffmaury)</author>
+            
+        </item>
+        
+        <item>
+            <title>Quinoa - A Quarkus extension to create Modern UI with no hassle</title>
+            <link>
+                https://quarkus.io/blog/quinoa-modern-ui-with-no-hassle/
+            </link>
+            <description>
+                Quinoa&#8230;&#8203; To be honest I wasn&#8217;t really a fan at first, but then my wife made them in a bowl like a salad with avocado and raw salmon. Now I really enjoy it with a touch of soy sauce. Let&#8217;s not digress too much, I am not here to talk...
+            </description>
+            <pubDate>Thu, 19 May 2022 00:00:00 +0000</pubDate>
+            <guid>
+                https://quarkus.io/blog/quinoa-modern-ui-with-no-hassle/
+            </guid>
+            
+            
+            
+            <author>Andy Damevin (https://twitter.com/ia3andy)</author>
+            
+        </item>
+        
+        <item>
+            <title>Quarkus 2.9.1.Final released - Maintenance release</title>
+            <link>
+                https://quarkus.io/blog/quarkus-2-9-1-final-released/
+            </link>
+            <description>
+                It is my pleasure to announce the availability of Quarkus 2.9.1.Final, the first maintenance release of our 2.9 release. It is a safe upgrade for anyone already using 2.9. If you are not using 2.9 already, please refer to the 2.9 migration guide. Full changelog You can get the full...
+            </description>
+            <pubDate>Tue, 17 May 2022 00:00:00 +0000</pubDate>
+            <guid>
+                https://quarkus.io/blog/quarkus-2-9-1-final-released/
+            </guid>
+            
+            
+            
+            <author>Guillaume Smet (https://twitter.com/gsmet_)</author>
+            
+        </item>
+        
+        <item>
+            <title>Quarkus Newsletter #20 - May</title>
+            <link>
+                https://quarkus.io/blog/quarkus-newsletter-20/
+            </link>
+            <description>
+                The May newsletter is out! Read the great article "Native Java in the Real World" describing how Microservices on Kubernetes are the business case sweet spot for native Java because they have the most significant framework and Java runtime overhead. As well as How to use Camel extensions for Quarkus...
+            </description>
+            <pubDate>Thu, 12 May 2022 00:00:00 +0000</pubDate>
+            <guid>
+                https://quarkus.io/blog/quarkus-newsletter-20/
+            </guid>
+            
+            
+            
+            <author>James Cobb (https://twitter.com/insectengine)</author>
+            
+        </item>
+        
+        <item>
+            <title>Quarkus 2.9.0.Final released - WebAuthn extension, Compression support for Reactive Routes and RESTEasy Reactive and much more...</title>
+            <link>
+                https://quarkus.io/blog/quarkus-2-9-0-final-released/
+            </link>
+            <description>
+                We just released Quarkus 2.9, which comes packed with new features: WebAuthn extension Compression support for Reactive Routes and RESTEasy Reactive Support for Confluent Schema Registry Support for Back channel logout Kotlin and Scala upgrade And much more&#8230;&#8203; Migration Guide To migrate from 2.8, please refer to our migration guide....
+            </description>
+            <pubDate>Wed, 11 May 2022 00:00:00 +0000</pubDate>
+            <guid>
+                https://quarkus.io/blog/quarkus-2-9-0-final-released/
+            </guid>
+            
+            
+            
+            <author>Guillaume Smet (https://twitter.com/gsmet_)</author>
+            
+        </item>
+        
+        <item>
+            <title>Quarkus 2.8.3.Final released - Maintenance release</title>
+            <link>
+                https://quarkus.io/blog/quarkus-2-8-3-final-released/
+            </link>
+            <description>
+                We just released Quarkus 2.8.3.Final which is the third and probably last maintenance release for our 2.8 release train. 2.9.0.Final will be released next week. It is a safe upgrade for anyone already using 2.8. If you are not using 2.8 already, please refer to the 2.8 migration guide. Full...
+            </description>
+            <pubDate>Fri, 06 May 2022 00:00:00 +0000</pubDate>
+            <guid>
+                https://quarkus.io/blog/quarkus-2-8-3-final-released/
+            </guid>
+            
+            
+            
+            <author>Guillaume Smet (https://twitter.com/gsmet_)</author>
+            
+        </item>
+        
+        <item>
+            <title>Monitoring Quarkus JVM Mode With Cryostat</title>
+            <link>
+                https://quarkus.io/blog/monitoring-quarkus-jvm-mode-with-cryostat/
+            </link>
+            <description>
+                Cryostat is a profiling and monitoring tool that leverages the JDK Flight Recorder (JFR) framework already present in your Java applications running on the HotSpot JVM. Cryostat provides an in-cluster collection hub for easy and secure access to your JDK Flight Recorder data from outside the cluster. Cryostat is a...
+            </description>
+            <pubDate>Wed, 27 Apr 2022 00:00:00 +0000</pubDate>
+            <guid>
+                https://quarkus.io/blog/monitoring-quarkus-jvm-mode-with-cryostat/
+            </guid>
+            
+            
+            
+            <author>Andrew Azores</author>
+            
+        </item>
+        
+    </channel>
+</rss>
