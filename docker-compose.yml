@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  quarkus-site:
+    build: 
+      context: ./
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/code
+    network_mode: host
+    command: bundle exec jekyll serve
