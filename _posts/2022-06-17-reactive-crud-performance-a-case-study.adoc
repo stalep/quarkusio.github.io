@@ -4,7 +4,7 @@ date:   2022-06-17 00:00 +0100
 author: johara
 tags: performance
 title: "Reactive CRUD Performance: A Case Study"
-synopsis: By carefully fixing and designing a performance test to ensure that only Quarkus is being stressed, throughput improves from 1.75 req/sec to nearly 26,000 req/sec!
+synopsis: By carefully fixing and designing a performance test to ensure that only Quarkus is being stressed, throughput improves from 1.75 req/sec to nearly 26,000 req/sec
 ---
 :imagesdir: /assets/images/posts/reactive-post-benchmark
 
