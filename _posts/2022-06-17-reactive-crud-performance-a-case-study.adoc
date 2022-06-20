@@ -253,7 +253,7 @@ The application is using less than **0.5** cores on a **32** core machine... hmm
 ====
 *Is the application the bottleneck?*
 
-If a *component of the system* is the performance bottleneck, we are not actually stress testing the application.
+If a *system component* is the performance bottleneck (i.e. not the application under test), we are not actually stress testing the application.
 ====
 
 
