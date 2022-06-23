@@ -1,6 +1,6 @@
 ---
 layout: post
-date:   2022-06-17 00:00 +0100
+date:   2022-06-23 00:00 +0100
 author: johara
 tags: performance
 title: "What is Coordinated Omission?"
@@ -132,39 +132,56 @@ image::firstTest.png[First Test,400,400,float="right",align="center"]
 
 After reviewing the call logs, we found the average call duration was *1min 20secs*
 
-==== Woohoo!!! Ship It!!
+=== Ship It!!
+
+image::realworld.png[Real World, 400, 400,float="right",align="center"]
+
+Fairly soon after opening *BSTSI-callHandler-2.0*, negative reviews start appearing.  Some people are frustrated that they can not quickly get through to place an order. And it is not just one person! there are a few disgruntled customers.
 
 
+=== What went wrong?
 
+*Our test had some fundamental flaws*. While everything appeared to provide us with the data to give us confidence about how the call center would perform, we were not quite modelling how calls would arrive *in the real world*.
 
-==== What went wrong?
+Each tester had been given their own phone and a list of orders to place. This puts some limits on the test;
+[IMPORTANT]
+====
+. *Testers can only place one order at a time!*
 
-Each tester had been given their own phone and a list of orders to place.  *They can only place one order at a time!*
+. *Testers are blocked* from placing any more orders until their current order is placed.  
 
-They are blocked from placing any more orders until their current order is placed.  
+. In the real world there are many more customers, *each with their own phone*
 
-In the real world there are many multiple times more customers
+. In the real world, *customers enquiries arrive at different, random times, often in parallel*. 
+====
 
-In the real world, customers enquiries arrive at different, random times, often in parallel. 
+In addition to to the problems above, In the real world, there are *hiccups*.  For example, in our call center there are Lunch breaks, fire alarms, computer systems crash.
 
-In the real world, there are *hiccups*.  In our call center there are Lunch breaks, fire alarms, computer systems crash. 
+=== How does a Hiccup effect our call center performance?
+
+We have our imaginary call center, now lets have an imaginary outage! 
 
 Lets say we were making 1,000 new orders, with 10 testers.  Each order takes on average 30 seconds to complete, so the call center should be handling 20 calls per minutes (2 per tester).
 
-Someone has planned an upgrade to the backend systems at 1:15pm, which should not impact business, but it knocks all the backend systems out for 15 minutes, tying up the operators until the backend systems com back online.
+Someone has planned an upgrade to the backend systems at 1:15pm, which should not impact business, but it knocks all the backend systems out for 10 minutes, tying up the operators until the backend systems come back online.
 
 === Lets do some Math!
 
-What does this do the to summary statistics?
+What does this do the to summary statistics? A 10 minute Hiccup in our call center while testing would have been observed like this;
+
+image::coordinated-omission-blocked-wait-time.png[Blocked Wait Time]
+
+Whereas, *in reality*, a 10 minutes Hiccup will be observed like this by our customers;
+
+image::coordinated-omission-cumulative-wait-time.png[Cumulative Wait Time]
+
+If you do not want to get bogged down by the maths behind this, skip to <<Why are the numbers so different?>>
 
 10 testers had a call each that lasted 930 seconds (15min delay + 30second service time). No other calls were received during that 5 minute period because all the testers we blocked from making more calls. 
 
 Therefore the average call duration was 990 * 30 + 10 * 930 / 1000 ; *39 seconds*
 
 The 99th centile would have been measured as: 30 seconds
-
-image::coordinated-omission-blocked-wait-time.png[Blocked Wait Time]
-
 
 But, in the real world, with 1,000 *different* customers, the average experience would have been *alot* different.
 
@@ -179,17 +196,16 @@ Our testing showed an average response time of *39 seconds*, whereas in reality 
 
 Our test methodology gave an average order time of 39 seconds, and 99% of customers were serviced in 30 seconds.  In reality, with actual real customers, the average call time was 120 seconds, and the the 99th centile was 930 seconds (15.5 minutes)
 
-image::coordinated-omission-cumulative-wait-time.png[Cumulative Wait Time]
 
 
+
+=== Why are the numbers so different?
 
 [IMPORTANT]
 ====
-*Why are the numbers so different?*
-
 In our testing scenario, there were 10 testers who were blocked for 15 minutes. In reality users would *keep calling the telephone line* and being put on hold until an operator became available.
 
-*We have not captured the waiting time of 90 of our users who would have waited over 15 minutes in the queue
+*We have not captured the waiting time of 200 of our users who would have waited up to 15 minutes in the queue*
 ====
 
 === Second Attempt
@@ -212,15 +228,15 @@ In the first test, the testers could only make one call and made the calls in se
 
 If there was a hiccup, they could not start a new call.  
 
-== But surely, if I have enough threads, I can tune away this problem?
-
-Unfortunately not, you *might* be able to mitigate some of the issues through tuning, but you can *never be certain that the results are accurate*. The fundamental problem is that there is *missing data*.
-
 == What can be done?
 
 A load generation tool that uses asynchronous I/O and uncouples threading from I/O, which measures timing independent on I/O is able to detect when the System Under Test is applying back-pressure to the load generator.
 
 Tools such as Hyperfoil will detect *and report* backpressure, so you *can* be sure that the load generator is reporting accurate response times without any Coordinated Omission effects from the SUT.
+
+== But surely, if I have enough threads, I can tune away this problem?
+
+Unfortunately not, you *might* be able to mitigate some of the issues through tuning, but you can *never be certain that the results are accurate*. The fundamental problem is that there is *missing data*.
 
 
 == Summary
