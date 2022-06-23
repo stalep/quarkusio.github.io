@@ -111,7 +111,8 @@ For this work, we need to design a test that models the real world!
 Our SLA for our call center stipulates that we need to be able to;
 
 - Process *20 orders per minute*
-- Customers must spend *on average less than 3 minutes* on the phone placing an order.
+- Customers must spend *on average less than 1 minutes* on the phone placing an order.
+- 99% of customers should be able to place an order within *3 minutes*
 
 So, lets bring in a number of dummy customers (*clients*) that will ring the call center and place fictitious orders. We can measure how long it takes for each dummy customer to place and order. 
 
@@ -147,6 +148,49 @@ In the real world there are many multiple times more customers
 In the real world, customers enquiries arrive at different, random times, often in parallel. 
 
 In the real world, there are *hiccups*.  In our call center there are Lunch breaks, fire alarms, computer systems crash. 
+
+Lets say we were making 1,000 new orders, with 10 testers.  Each order takes on average 30 seconds to complete, so the call center should be handling 20 calls per minutes (2 per tester).
+
+Someone has planned an upgrade to the backend systems at 1:15pm, which should not impact business, but it knocks all the backend systems out for 15 minutes, tying up the operators until the backend systems com back online.
+
+=== Lets do some Math!
+
+What does this do the to summary statistics?
+
+10 testers had a call each that lasted 930 seconds (15min delay + 30second service time). No other calls were received during that 5 minute period because all the testers we blocked from making more calls. 
+
+Therefore the average call duration was 990 * 30 + 10 * 930 / 1000 ; *39 seconds*
+
+The 99th centile would have been measured as: 30 seconds
+
+image::coordinated-omission-blocked-wait-time.png[Blocked Wait Time]
+
+
+But, in the real world, with 1,000 *different* customers, the average experience would have been *alot* different.
+
+If we received 20 calls per minute, with calls blocked for 15 minutes, we would have experienced at least 20 * 5 = *100* calls taking 930 seconds. Possibly even more as the backlog gets cleared.
+
+The actual average call duration would have been 900 * 30 + 100 * 930 / 1000 ; *120 seconds*
+
+The 99th centile would have been measured as: 930 seconds!
+
+Our testing showed an average response time of *39 seconds*, whereas in reality it *would* have been *120 seconds*
+
+
+Our test methodology gave an average order time of 39 seconds, and 99% of customers were serviced in 30 seconds.  In reality, with actual real customers, the average call time was 120 seconds, and the the 99th centile was 930 seconds (15.5 minutes)
+
+image::coordinated-omission-cumulative-wait-time.png[Cumulative Wait Time]
+
+
+
+[IMPORTANT]
+====
+*Why are the numbers so different?*
+
+In our testing scenario, there were 10 testers who were blocked for 15 minutes. In reality users would *keep calling the telephone line* and being put on hold until an operator became available.
+
+*We have not captured the waiting time of 90 of our users who would have waited over 15 minutes in the queue
+====
 
 === Second Attempt
 
