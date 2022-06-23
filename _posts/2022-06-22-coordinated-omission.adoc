@@ -238,6 +238,14 @@ Tools such as Hyperfoil will detect *and report* backpressure, so you *can* be s
 
 Unfortunately not, you *might* be able to mitigate some of the issues through tuning, but you can *never be certain that the results are accurate*. The fundamental problem is that there is *missing data*.
 
+Statements are often made such as _'As with any Load Testing tool, if you don't correctly size the number of threads, you will face the "Coordinated Omission" problem which can give you wrong or inaccurate results.'_ (https://jmeter.apache.org/usermanual/best-practices.html)
+
+The fundamental issue is not with the _size of the thread pool_, but whether the load generator threads that measure response time _can be blocked by the System Under Test_.  
+
+[IMPORTANT]
+====
+*If the load generation tool does not decouple time measurement from generating load, the problem can not be tuned away.*
+====
 
 == Summary
 
