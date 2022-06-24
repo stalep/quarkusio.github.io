@@ -13,7 +13,7 @@ Learn about Coordinated Omission, the root cause and its effects. After reading 
 
 == Tl;dr
 
-Coordinated Omission occurs when the load generator we choose is not able to accurately create a workload representative of real world traffic whilst load testing a Remote Service. 
+Coordinated Omission occurs when the load generator we choose is not able to accurately create a workload representative of real world traffic whilst load testing a remote service. 
 
 There is a "Coordination" from the System Under Test applying indirect back pressure to the load driver, that causes the load driver to "Omit" any number of valid results. The System Under Test can blocks the load generator, severely skewing it's measurements.
 
@@ -36,7 +36,7 @@ To improve customer experience, we want to reduce the time it takes for our cust
 
 What do we need to do; measure how long it takes to place a telephone order through our switchboard.
 
-If it takes longer than 2 minutes to place an order we will start to loose market share to our rivals _Prime Materials Supplies_. 
+If it takes longer than 1 minute to place an order we will start to loose market share to our rivals _Prime Materials Supplies_. 
 
 === A typical interaction
 
@@ -53,7 +53,7 @@ There are 2 main components in the time taken to place the order;
 * the *"Wait Time"* the customer was being held in the switchboard queue before being put through the operator
 * The *"Service Time"* it took for the operator to process the customer request
 
-From the customers point-of-view, the total *"Order Time"* (i.e. the time taken to place the order) was ;
+From the customers point-of-view, the total *"Order Time"* (i.e. the time taken to place the order) is ;
 
 [IMPORTANT]
 ====
@@ -61,10 +61,10 @@ From the customers point-of-view, the total *"Order Time"* (i.e. the time taken 
 
 To measure the performance of our call center, we need to measure the total "Order Time".
 
-If it only takes a single operator 30 seconds to process an order request, but customers are waiting on average 30 minutes to be connected to them, the customer experience is poor"
+*If it only takes a single operator 30 seconds to process an order request, but customers are waiting on average 30 minutes to be connected to them, the customer experience is poor*
 ====
 
-== "What does a call center have to do with my Web Service?!?"
+== What does a call center have to do with my Web Service?!?
 
 There are a lot of similarities between a call center and a Web Service. 
 
@@ -114,7 +114,7 @@ Our SLA for our call center stipulates that we need to be able to;
 
 So, lets bring in a number of dummy customers (*clients*) that will ring the call center and place fictitious orders. We can measure how long it takes for each dummy customer to place and order. 
 
-To meet the SLA, we need to be able to process *20 orders per minute* (*throughput*) with the average telephone call taking less than *2 minutes* (*mean response time*).
+To meet the SLA, we need to be able to process *20 orders per minute* (*throughput*) with the average telephone call taking less than *1 minute* (*mean response time*).
 
 === First attempt
 
@@ -130,7 +130,7 @@ image::firstTest.png[First Test,400,400,float="right",align="center"]
 
 . After all the testers have run through their list of dummy orders. The call times for all the testers are collated 
 
-After reviewing the call logs, we found the average call duration was *36 seconds*. This within our SLA limit of 2 minutes *ship it!*
+After reviewing the call logs, we found the average call duration was *36 seconds*. This within our SLA limit of 1 minute, *SHIP IT!*
 
 === Ship It!!
 
@@ -274,9 +274,11 @@ Our flawed test showed the average order time of 36 seconds, but on average cust
 
 === Second Attempt
 
-. Each tester is given *multiple phones*, a list of orders to place *and the time to start the call* and a stopwatch
+image::secondTest.png[Second Test,400,400,float="right",align="center"]
 
-. The tester(s) calls the new call center to place orders
+. Each tester is given *multiple phones*, a list of orders to place *and the time to start the call* and a *stopwatch*
+
+. The tester(s) calls the call center to place orders, *at the time specified on their list*
 
 . If the first call does not complete before the next order needs to be placed, the tester users a *different* phone to make the next call. Any one tester can have multiple calls *running concurrently* at the same time.
 
@@ -284,21 +286,37 @@ Our flawed test showed the average order time of 36 seconds, but on average cust
 
 . After all the testers have run through their list of dummy orders. The call times for all the testers are collated and summary data is calculated.
 
-. If the tester runs out of phones, they start the stopwatch and stop the stopwatch again when one of their phones becomes available.  After all of the orders have been placed, the stopwatch value is recorded the total *blocked time* during the load test.  This is a direct measurement of Coordinated Omission.
+. If the tester runs out of phones, they start the stopwatch and stop the stopwatch again when one of their phones becomes available. After all of the orders have been placed, the stopwatch value is recorded the total *blocked time* for each tester during the load test.  *This is a direct measurement of Coordinated Omission.*
+
+[WARNING]
+====
+
+This time the average call time was 1 minute 20 seconds, above our SLA.
+
+We need to investigate why we are not meeting our SLA before rolling out *BSTSI-callHandler-2.0* to our customers
+
+====
 
 === What is different?
 
-In the first test, the testers could only make one call and made the calls in sequence. 
+Why is this a more accurate reflection of reality. A small number of testers are trying to mimic 1000 customer orders. In reality, we wouldn't have 10 customers, each placing 100 orders in sequence. We are more likely to receive 1000 different customers, each placing one order.  They would not arrive in sequence, but in parallel and at random times.
 
-If there was a hiccup, they could not start a new call.  
+In the first test, the testers could only make one call and made the calls in sequence. The maximum queue size was the number of testers.  If there was a hiccup, they could not start a new call, but were blocked until they could end their current call.  The wait time of any other customers trying to call the call center was missed.  
 
-== Coming back to Benchmarking
+In the second test, the testers could use multiple phones to place calls in parallel. By have a list of pre determined times, we define how many new customers calls were arriving at the call center. We can record the total call time for each virtual customer, and if we run out of phones (*connections*) to support the arrival rate, we record the blocked time.
+
+[IMPORTANT]
+====
+If there is *any* blocked time recorded, the *results are invalid*.  It is invalid because we can no long queue any more customers, and record their wait time.
+====
+
+== Bringing it back to Benchmark Design
 
 == What can be done?
 
 A load generation tool that uses asynchronous I/O and uncouples threading from I/O, which measures timing independent on I/O is able to detect when the System Under Test is applying back-pressure to the load generator.
 
-Tools such as Hyperfoil will detect *and report* backpressure, so you *can* be sure that the load generator is reporting accurate response times without any Coordinated Omission effects from the SUT.
+Tools such as https://hyperfoil.io/[Hyperfoil] will detect *and report* server back-pressure, so you *can* be sure that the load generator is reporting accurate response times without any Coordinated Omission effects from the SUT.
 
 == How I tell if my load generation tool suffers from Coordinated Omission?
 
@@ -331,7 +349,11 @@ If the load generator *only* reports N number of requests, equivalent to the num
 We covered a demonstration of Coordinated Omission in "Quarkus Insights #22: Performance Testing: Tips and Pitfalls"
 
 ++++
-include::../assets/images/posts/coordinated-omission/insights_video.html[]
+<div class="imageblock right text-center">
+<div class="content">
+<iframe width="560" height="315" src="https://www.youtube.com/embed/xdG8b9iDYbE?start=1500" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+</div>
 ++++
 
 == Can tune away this problem?
@@ -354,7 +376,8 @@ I have personally witnessed applications under load fully paused for 2-3 seconds
 
 === Can't I just look at the summary stats to tell if my run was affected?
 
-Here's the thing, it is very difficult! The maximum value will be the same
+It is very difficult! The maximum values will be the same. The mean and centile response times look sensible.  The only way to tell is if the requests sent are equal to expected number of requests to be sent during the time period. However, if you can not set an arrival rate, it is not possible to determine if the expected number of requests were sent.
+
 
 [IMPORTANT]
 ====
@@ -363,7 +386,15 @@ Here's the thing, it is very difficult! The maximum value will be the same
 
 == Summary
 
-Coordinated Omission is the unintended back pressure a system under test can apply to a load generation tool, that prevents that tool for accurately recording user experience.  A load generation tool that suffers from coordintated omission 
+Coordinated Omission is the unintended back pressure a system under test can apply to a load generation tool, that prevents that tool for accurately recording user experience.  
+
+*Response time* = *wait time* + *service time*.  A load generation tool that suffers from coordinated omission will only record *service time* and will fail to record *wait time*.  Wait time *can be significant* and therefore can have a huge effect on summary statistics. 
+
+The worst part is, the load generator is unable to record the missed time, so users are completely unaware that there is a problem.
+
+In order to design response time tests (typically associated with SLA's) we need to use tools that accurately record response time, including wait time.  More importantly, our tools should *warn us if there is any unintended back-pressure from the System Under Test*.
+
+Choosing a tool such as https://hyperfoil.io/[Hyperfoil] will not only provide you with accurate measurements, it will also warn you and fail the benchmark if it detects hiccups that have effected the accuracy of the results.
 
 == Further Reading
 
