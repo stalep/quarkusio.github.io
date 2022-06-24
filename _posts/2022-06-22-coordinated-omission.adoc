@@ -7,6 +7,7 @@ title: "What is Coordinated Omission?"
 synopsis: Learn about the Coordinated Omission problem when load testing; discover its root cause and effects, and learn how to design load tests that are not affected.
 ---
 :imagesdir: /assets/images/posts/coordinated-omission
+:includedir: ../assets/images/posts/coordinated-omission
 
 Learn about Coordinated Omission, the root cause and its effects. After reading this post you should be able to answer questions such as "What is Coordinated Omission?", "How does it effect benchmark results", "How can we design a load test that does not suffer from coordinated omission" and "does my tool suffer from the coordinated omission problem?"
 
@@ -263,9 +264,12 @@ The *Average call duration _experienced_ by customers was 1.9 minutes!*
 ====
 In our testing scenario, there were 10 testers who were blocked for 10 minutes. In reality users would *keep calling the telephone line* and being put on hold until an operator became available.
 
-*We have not captured the waiting time of 200 of our users who would have waited up to 15 minutes in the queue*
+*Our test captured 10 Testers blocked for 10 minutes, but in reality 200 users would have been waiting for up to 10 minutes. We did not captured the waiting time of 200 of our users!*
 
-*The MISSED waiting time is not included in the summary statistics!*
+Our flawed test showed the average order time of 36 seconds, but on average customers would have waited 1minute 54 seconds.
+
+
+*The MISSED waiting time was not included in the summary statistics!*
 ====
 
 === Second Attempt
@@ -322,13 +326,35 @@ $ fg 1
 If the load generator *only* reports N number of requests, equivalent to the number of threads configured to generate load, taking the `Stopped` period of time and no more threads experiencing delay then you have a problem
 ====
 
-== But surely, if I have enough threads, I can tune away this problem?
+== See it in action
+
+We covered a demonstration of Coordinated Omission in "Quarkus Insights #22: Performance Testing: Tips and Pitfalls"
+
+++++
+include::../assets/images/posts/coordinated-omission/insights_video.html[]
+++++
+
+== Can tune away this problem?
+
+=== What happens if I increase the number of threads?
 
 Unfortunately not, you *might* be able to mitigate some of the issues through tuning, but you can *never be certain that the results are accurate*. The fundamental problem is that there is *missing data*, but you can not tell from the results if all the data has been captured.
 
 Statements are often made such as _'As with any Load Testing tool, if you don't correctly size the number of threads, you will face the "Coordinated Omission" problem which can give you wrong or inaccurate results.'_ (https://jmeter.apache.org/usermanual/best-practices.html)
 
 The fundamental issue is not with the _size of the thread pool_, but whether the load generator threads that measure response time _can be blocked by the System Under Test_.  
+
+=== Can't I just run the tests for longer?
+
+How many hiccups does your system have? How long do they last? Even if you can quantify those metrics, adjusting adding wait time to response times through a different data source is error prone. You might as well pick a load generation tool that handles coordinated omission and not have to normalize for a broken methodology.
+
+=== My application does not stop that long, surely this is effect negligible?
+
+I have personally witnessed applications under load fully paused for 2-3 seconds to perform GC, every 5-10 seconds.  Unless your load generator can measure that wait time, *you will not know* that the application was stalled. a load generator that suffers from co-rdinated omission has no way of measuring it
+
+=== Can't I just look at the summary stats to tell if my run was affected?
+
+Here's the thing, it is very difficult! The maximum value will be the same
 
 [IMPORTANT]
 ====
@@ -337,6 +363,7 @@ The fundamental issue is not with the _size of the thread pool_, but whether the
 
 == Summary
 
+Coordinated Omission is the unintended back pressure a system under test can apply to a load generation tool, that prevents that tool for accurately recording user experience.  A load generation tool that suffers from coordintated omission 
 
 == Further Reading
 
