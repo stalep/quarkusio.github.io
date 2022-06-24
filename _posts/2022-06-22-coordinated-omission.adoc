@@ -15,7 +15,7 @@ Learn about Coordinated Omission, the root cause and its effects. After reading 
 
 Coordinated Omission occurs when the load generator we choose is not able to accurately create a workload representative of real world traffic whilst load testing a remote service. 
 
-There is a "Coordination" from the System Under Test applying indirect back pressure to the load driver, that causes the load driver to "Omit" any number of valid results. The System Under Test can blocks the load generator, severely skewing it's measurements.
+There is a "Coordination" from the System Under Test applying indirect back pressure to the load driver, that causes the load driver to "Omit" any number of valid results. The System Under Test can block the load generator, severely skewing it's measurements.
 
 Response time metrics measured with tools that suffer from Coordinated Omission are far from misleading, they are wrong. The worst part is, the load generator can not detect or inform users that the results are incorrect.
 
@@ -372,7 +372,7 @@ How many hiccups does your system have? How long do they last? Even if you can q
 
 === My application does not stop that long, surely this is effect negligible?
 
-I have personally witnessed applications under load fully paused for 2-3 seconds to perform GC, every 5-10 seconds.  Unless your load generator can measure that wait time, *you will not know* that the application was stalled. a load generator that suffers from co-rdinated omission has no way of measuring it
+I have personally witnessed applications under load fully paused for 2-3 seconds to perform GC, every 5-10 seconds.  Unless your load generator can measure that wait time, *you will not know* that the application was stalled. A load generator that suffers from coordinated omission has no way of measuring it.
 
 === Can't I just look at the summary stats to tell if my run was affected?
 
