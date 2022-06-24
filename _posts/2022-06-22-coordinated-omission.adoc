@@ -35,7 +35,7 @@ To improve customer experience, we want to reduce the time it takes for our cust
 
 What do we need to do; measure how long it takes to place a telephone order through our switchboard.
 
-If it takes longer than 3 minutes to place an order we will start to loose market share to our rivals _Prime Materials Supplies_. 
+If it takes longer than 2 minutes to place an order we will start to loose market share to our rivals _Prime Materials Supplies_. 
 
 === A typical interaction
 
@@ -109,11 +109,11 @@ Our SLA for our call center stipulates that we need to be able to;
 
 - Process *20 orders per minute*
 - Customers must spend *on average less than 1 minutes* on the phone placing an order.
-- 99% of customers should be able to place an order within *3 minutes*
+- 99% of customers should be able to place an order within *2 minutes*
 
 So, lets bring in a number of dummy customers (*clients*) that will ring the call center and place fictitious orders. We can measure how long it takes for each dummy customer to place and order. 
 
-To meet the SLA, we need to be able to process *20 orders per minute* (*throughput*) with the average telephone call taking less than *3 minutes* (*response time*).
+To meet the SLA, we need to be able to process *20 orders per minute* (*throughput*) with the average telephone call taking less than *2 minutes* (*mean response time*).
 
 === First attempt
 
@@ -129,7 +129,7 @@ image::firstTest.png[First Test,400,400,float="right",align="center"]
 
 . After all the testers have run through their list of dummy orders. The call times for all the testers are collated 
 
-After reviewing the call logs, we found the average call duration was *1min 20secs*
+After reviewing the call logs, we found the average call duration was *36 seconds*. This within our SLA limit of 2 minutes *ship it!*
 
 === Ship It!!
 
@@ -160,6 +160,9 @@ In addition to to the test design problems above, in the real world there are *h
 
 We have our imaginary call center, now lets have an imaginary outage! 
 
+[#img-dilbert-token-ring] 
+.https://dilbert.com/strip/1996-05-02
+[link=https://dilbert.com/strip/1996-05-02] 
 image::dilbert_token_ring.gif[Dilbert Token Ring, , ,float="right",align="center"]
 
 
@@ -179,40 +182,80 @@ Lets make some assumptions about our imaginary call center, with its imaginary o
 - all calls are processed, the *dropout rate is 0*
 - each order takes a deterministic *30 seconds* to complete. (*service time = 0.5min*)
 - in the time before the outage, all calls are handled immediatley (*waiting time = 0min*)
+- the queue is a First-In-First-Out (FIFO) queue
+- the queue is infinitely sized
 
 What does this do the to summary statistics? A 10 minute Hiccup _during our tests_ would have been observed like this by the *testers*;
 
 image::coordinated-omission-blocked-wait-time.png[Blocked Wait Time]
 
+[NOTE]
+====
+The *Average Call Duration measured during Testing was 0.6 minutes (0min 36sec)*
+====
+
 Whereas, _in reality_, a 10 minutes Hiccup will be observed like this by our *customers*;
 
 image::coordinated-omission-cumulative-wait-time.png[Cumulative Wait Time]
 
-If you skip the math, continue with <<Why are the numbers so different?>>
+[NOTE]
+====
+The *Average Call Duration experienced by customers was 1.9 minutes (1min 54s)*
+====
+
+If you want to skip the math, continue with <<Why are the numbers so different?>>
+
+==== In our test scenario
+
+we had *10 testers* placing orders each placing an order. At 6 mins there was an outage, that *lasted 10 minutes*.
+
+Therefore, for 10 blocked orders;
+
+- there was a *wait time of 10 minutes each*
+- there was a *service time of 0.5 mins*
+- total *order time was 10.5 minutes*
+
+For the remaining 990 orders;
+
+- there was a *wait time of 0 minutes each*
+- there was a *service time of 0.5 mins*
+- total *order time was 0.5 minutes*
+
+image::testAvOrderTime.png[Test Average Order time,,float="right",align="center"]
+
+[NOTE]
+====
+The *Average Call Duration measured during Testing was 0.6 minutes*
+====
+
+==== In the Real World
+
+Things are a bit more complicated;
+
+- new customers arrive at a rate of *20 per minute*
+- therefore, during the first minute of outage, 20 customers will be placed in the switchboard queue and will have to wait for *10 minutes*, before the queue starts to empty
+- in the 2nd minute of the outage *another 20 customer* arrive, are placed in the switchboard queue and will have to wait for *9 minutes*, before the queue starts to empty
+- customers continue to arrive during the outage, filling up the switchboard queue
+- *once the outage is resolved* the operators can start to process the queue of customers. But there is a maximum number of customers they can process in one minutes (60 customers per minute *max throughput*)
+- while the backlog is being processed at a rate of *60 customers per minute*, *20 customers per minute* are still being added to the back of the queue.
 
 
+During the outage, the total *Wait time* can be modelled by; 
 
-10 testers had a call each that lasted 930 seconds (15min delay + 30second service time). No other calls were received during that 5 minute period because all the testers we blocked from making more calls. 
+image::equation-arrival-wait.png[Real blocked time wait,,float="right",align="center"]
 
-Therefore the average call duration was 990 * 30 + 10 * 930 / 1000 ; *39 seconds*
+After the outage, while the backlog is cleared, the total *Wait time* can be modelled by;
 
-The 99th centile would have been measured as: 30 seconds
+image::equation-backlog-wait.png[Real blocked time wait,,float="right",align="center"]
 
-But, in the real world, with 1,000 *different* customers, the average experience would have been *alot* different.
+If we calculate our scenario;
 
-If we received 20 calls per minute, with calls blocked for 15 minutes, we would have experienced at least 20 * 5 = *100* calls taking 930 seconds. Possibly even more as the backlog gets cleared.
+image::realAvWaitTime.png[Real Average Order time,,float="right",align="center"]
 
-The actual average call duration would have been 900 * 30 + 100 * 930 / 1000 ; *120 seconds*
-
-The 99th centile would have been measured as: 930 seconds!
-
-Our testing showed an average response time of *39 seconds*, whereas in reality it *would* have been *120 seconds*
-
-
-Our test methodology gave an average order time of 39 seconds, and 99% of customers were serviced in 30 seconds.  In reality, with actual real customers, the average call time was 120 seconds, and the the 99th centile was 930 seconds (15.5 minutes)
-
-
-
+[NOTE]
+====
+The *Average call duration _experienced_ by customers was 1.9 minutes!*
+====
 
 === Why are the numbers so different?
 
