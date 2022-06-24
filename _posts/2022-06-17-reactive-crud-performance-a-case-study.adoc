@@ -33,8 +33,8 @@ The source code for the test can be found here: https://github.com/thiagohora/tu
 
 To learn more about creating Reactive Applications with Quarkus, please read the https://quarkus.io/guides/getting-started-reactive[Getting Started With Reactive] guide
 
-== Initial Results 
-image::emoji-unhappy.png[]
+== Initial Results image:emoji-unhappy.png[Unhappy, 35, 35]
+
 
 Initial results for Quarkus were not promising;
 
@@ -169,8 +169,7 @@ public Uni<ZipCode> create(ZipCode zipCode) {
 Ah Ha! the endpoint is annotated with `@Transactional`, but the application is using Hibernate Reactive, we need `@ReactiveTransactional`. For further details, please read the https://quarkus.io/guides/hibernate-reactive-panache#transactions[Simplified Hibernate Reactive with Panache] guide
 
 
-== Quarkus Application Fixed
-image::emoji-happy.png[]
+== Quarkus Application Fixed image:emoji-happy.png[Happy, 35, 35]
 
 [source,java]
 ----
@@ -222,8 +221,7 @@ mysql> select count(*) from ZipCode;
 NOTE: The test has been designed to query the database if a ZipCode already exists, before attempting to insert a new ZipCode. There are a finite number of ZipCodes, so as the test progresses, the number of ZipCode entries will tend towards the maximum number of ZipCodes. The workload progresses from being write heavy to read heavy.
 
 
-== Same results
-image::emoji-unhappy.png[]
+== Same results image:emoji-unhappy.png[Unhappy, 35, 35]
 
 but... my the hard disk on my machine was making a **lot** of noise during the test! The Quarkus result of *390.21 req/sec* is suspiciously similar to the comparison baseline of *336.86 req/sec*, and...
 
@@ -257,8 +255,7 @@ If a *system component* is the performance bottleneck (i.e. not the application 
 ====
 
 
-== Move to a faster Disk
-image::emoji-happy.png[]
+== Move to a faster Disk image:emoji-happy.png[Happy, 35, 35]
 
 Let's move the database files to a faster disk;
 
@@ -295,8 +292,7 @@ Sit back, Relax and Profit! *25,599.85 req/sec!*
 While it is easy to claim we have resolved the issue, for comparisons, we still do not have a controlled environment to run tests!
 ====
 
-== System bottleneck still exists
-image::emoji-unhappy.png[]
+== System bottleneck still exists image:emoji-unhappy.png[Unhappy, 35, 35]
 
 the Quarkus process is now using 4.5 cores...
 
@@ -357,8 +353,7 @@ Choosing to scale up the system, or constrain the application, is a decision dep
 ====
 
 
-== Constrain application
-image::emoji-happy.png[]
+== Constrain application image:emoji-happy.png[Happy, 35, 35]
 
 We will remove the MySQL/System bottleneck by constraining the application to 4 cpu cores, therefore reducing the maximum load the application can drive to the database. We achieve this by running the application in docker;
 
@@ -402,8 +397,7 @@ With a constrained application environment, we will not be in the situation wher
 If any application _is_ at the system limit, the results are invalid.
 ====
 
-== All network traffic is not equal!
-image::emoji-unhappy.png[]
+== All network traffic is not equal! image:emoji-unhappy.png[Unhappy, 35, 35]
 
 Further investigation showed that Quarkus is not running with TLS enabled between the application and database, so database network traffic is running un-encrypted. Let's fix that;
 
@@ -444,8 +438,7 @@ This provided us with a final, comparable throughput result of *14,955.61 req/se
 image::apples-to-oranges.png[]
 
 
-== Results
-image::emoji-happy.png[]
+== Results image:emoji-happy.png[Happy, 35, 35]
 
 Is Quarkus really 600x times slower than Framework X/Y/Z? *Of course not!*
 
